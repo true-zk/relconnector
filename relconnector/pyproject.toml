@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "relconnector"
+version = "0.1.0"
+description = "Replaceable SQL readers for materialized RelBench datasets"
+readme = "readme.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.0",
+]
+
+[project.optional-dependencies]
+connectorx = ["connectorx>=0.4"]
+relbench = ["relbench>=3.0"]
+dev = ["ruff>=0.16"]
+
+[tool.setuptools.packages.find]
+include = ["relconnector*"]
+
+[tool.ruff]
+line-length = 88

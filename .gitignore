@@ -1,5 +1,13 @@
 ref_repos/
 .venv/
 .vscode/
+.agent/
+.sumi/
+
+__pycache__/
+relconnector/.ruff_cache/
+relconnector/*.egg-info/
+relconnector/data/relbench/*
+!relconnector/data/relbench/.gitkeep
 
 a.py

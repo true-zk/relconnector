@@ -1,0 +1,5 @@
+pandas>=2.0
+
+# Optional reader and RelBench object reconstruction support.
+connectorx>=0.4
+relbench>=3.0

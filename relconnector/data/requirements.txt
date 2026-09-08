@@ -1,0 +1,4 @@
+huggingface-hub>=0.20
+numpy>=1.26
+pandas>=2.0
+relbench>=3.0
