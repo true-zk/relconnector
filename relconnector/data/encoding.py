@@ -6,7 +6,7 @@ import json
 from collections.abc import Callable, Iterable
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -18,7 +18,7 @@ from .models import ColumnSchema
 def infer_column_schema(name: str, ordinal: int, series: pd.Series) -> ColumnSchema:
     """Infer a reversible SQLite encoding for a pandas series."""
     dtype = str(series.dtype)
-    metadata: dict[str, Any] = {}
+    metadata: dict[str, object] = {}
 
     if isinstance(series.dtype, pd.CategoricalDtype):
         metadata = {
@@ -53,7 +53,7 @@ def infer_column_schema(name: str, ordinal: int, series: pd.Series) -> ColumnSch
 
 def infer_columns(frame: pd.DataFrame) -> tuple[ColumnSchema, ...]:
     return tuple(
-        infer_column_schema(name, ordinal, frame[name])
+        infer_column_schema(name, ordinal, cast(pd.Series, frame[name]))
         for ordinal, name in enumerate(frame.columns)
     )
 
@@ -77,7 +77,7 @@ def sqlite_type(column: ColumnSchema) -> str:
 def encode_frame(frame: pd.DataFrame, columns: Iterable[ColumnSchema]) -> pd.DataFrame:
     result = frame.copy()
     for column in columns:
-        series = result[column.name]
+        series = cast(pd.Series, result[column.name])
         if column.encoding == "json":
             result[column.name] = _map_as_objects(
                 series,
@@ -95,7 +95,11 @@ def encode_frame(frame: pd.DataFrame, columns: Iterable[ColumnSchema]) -> pd.Dat
             result[column.name] = _map_as_objects(
                 series,
                 lambda value: (
-                    None if _is_null(value) else pd.Timestamp(value).isoformat()
+                    None
+                    if _is_null(value)
+                    else pd.Timestamp(
+                        cast(str | date | datetime | np.datetime64, value)
+                    ).isoformat()
                 ),
             )
         elif column.encoding == "timedelta_ns":
@@ -113,14 +117,20 @@ def encode_frame(frame: pd.DataFrame, columns: Iterable[ColumnSchema]) -> pd.Dat
         elif column.encoding == "bytes":
             result[column.name] = _map_as_objects(
                 series,
-                lambda value: None if _is_null(value) else bytes(value),
+                lambda value: (
+                    None
+                    if _is_null(value)
+                    else bytes(cast(bytes | bytearray | memoryview, value))
+                ),
             )
         else:
             result[column.name] = _map_as_objects(series, _sqlite_scalar)
     return result
 
 
-def _map_as_objects(series: pd.Series, function: Callable[[Any], Any]) -> pd.Series:
+def _map_as_objects(
+    series: pd.Series, function: Callable[[object], object]
+) -> pd.Series:
     """Map without coercing nullable 64-bit integers through float64."""
     return pd.Series(
         [function(value) for value in series.array],
@@ -129,7 +139,7 @@ def _map_as_objects(series: pd.Series, function: Callable[[Any], Any]) -> pd.Ser
     )
 
 
-def _is_null(value: Any) -> bool:
+def _is_null(value: object) -> bool:
     if value is None or value is pd.NaT or value is pd.NA:
         return True
     try:
@@ -139,7 +149,7 @@ def _is_null(value: Any) -> bool:
     return bool(result) if isinstance(result, (bool, np.bool_)) else False
 
 
-def _sqlite_scalar(value: Any) -> Any:
+def _sqlite_scalar(value: object) -> object:
     if _is_null(value):
         return None
     if isinstance(value, np.generic):
@@ -147,7 +157,7 @@ def _sqlite_scalar(value: Any) -> Any:
     return value
 
 
-def _json_value(value: Any) -> Any:
+def _json_value(value: object) -> object:
     if isinstance(value, np.ndarray):
         return [_json_value(item) for item in value.tolist()]
     if isinstance(value, tuple):

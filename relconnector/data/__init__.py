@@ -1,6 +1,6 @@
 """Standalone RelBench download and SQL materialization utilities."""
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from .models import (
     ColumnSchema,
@@ -39,7 +39,7 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str) -> Any:
+def __getattr__(name: str) -> object:
     if name in {"RelBenchMaterializer", "download_relbench_data"}:
         from .download import RelBenchMaterializer, download_relbench_data
 

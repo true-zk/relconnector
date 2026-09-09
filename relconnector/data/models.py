@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any
 
 import pandas as pd
 
@@ -41,7 +40,7 @@ class ColumnSchema:
     ordinal: int
     pandas_dtype: str
     encoding: str = "scalar"
-    encoding_metadata: Mapping[str, Any] = field(default_factory=dict)
+    encoding_metadata: Mapping[str, object] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -71,7 +70,7 @@ class TaskMetadata:
     entity_column: str | None = None
     target_column: str | None = None
     time_column: str | None = None
-    extra: Mapping[str, Any] = field(default_factory=dict)
+    extra: Mapping[str, object] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -79,7 +78,7 @@ class DatasetBundle:
     dataset_name: str
     tables: Mapping[str, MaterializedTable]
     tasks: Mapping[str, TaskMetadata] = field(default_factory=dict)
-    metadata: Mapping[str, Any] = field(default_factory=dict)
+    metadata: Mapping[str, object] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         reserved = set(self.tables).intersection(INTERNAL_TABLES)

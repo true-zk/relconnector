@@ -7,7 +7,7 @@ import os
 import sqlite3
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, cast
+from typing import Protocol, cast
 
 from .encoding import encode_frame, sqlite_type
 from .models import (
@@ -233,13 +233,19 @@ def _write_catalog(connection: sqlite3.Connection, bundle: DatasetBundle) -> Non
     )
 
 
-def _metadata_value(value: Any) -> str:
+def _metadata_value(value: object) -> str:
     if isinstance(value, str):
         return value
     return json.dumps(value, default=str, ensure_ascii=False)
 
 
-_WRITERS: dict[str, type[BaseDatabaseWriter]] = {
+class WriterFactory(Protocol):
+    def __call__(
+        self, path: str | Path, *, insertion_chunk_size: int
+    ) -> BaseDatabaseWriter: ...
+
+
+_WRITERS: dict[str, WriterFactory] = {
     "sqlite": SQLiteDatabaseWriter,
 }
 
@@ -249,7 +255,7 @@ def register_writer(name: str, writer: type[BaseDatabaseWriter]) -> None:
     key = name.strip().lower().replace("_", "-")
     if not issubclass(writer, BaseDatabaseWriter):
         raise TypeError("writer must inherit BaseDatabaseWriter")
-    _WRITERS[key] = writer
+    _WRITERS[key] = cast(WriterFactory, writer)
 
 
 def create_writer(
@@ -267,8 +273,7 @@ def create_writer(
         raise ValueError(
             f"Unknown database backend {backend!r}; available: {available}"
         ) from exc
-    writer_factory = cast(Any, writer)
-    return writer_factory(
+    return writer(
         output_path,
         insertion_chunk_size=insertion_chunk_size,
     )

@@ -4,27 +4,33 @@ import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import pandas as pd
 from pandas.testing import assert_frame_equal
-from relbench.base import Database, Table
+from relbench.base import Database, Table, TaskType
 
+from data.contracts import RelBenchTask
 from data.source import RelBenchDatasetSource
 from data.writers import SQLiteDatabaseWriter
 from relconnector.connector import (
     ConnectorXDatabaseReader,
     PandasDatabaseReader,
 )
+from relconnector.connector.catalog import ColumnSchema
+from relconnector.connector.decoding import decode_frame
 
 
 class FakeTask:
-    task_type = "binary_classification"
+    task_type = TaskType.BINARY_CLASSIFICATION
     entity_table = "users"
     entity_col = "user_id"
     target_col = "label"
     time_col = "timestamp"
     kind = "forecast"
+    timedelta = cast(pd.Timedelta, pd.Timedelta(days=1))
+    num_eval_timestamps = 1
 
     def __init__(self) -> None:
         self._frames = {
@@ -39,7 +45,7 @@ class FakeTask:
             for index, split in enumerate(("train", "val", "test"))
         }
 
-    def get_table(self, split: str, mask_input_cols: bool = False) -> Table:
+    def get_table(self, split: str, mask_input_cols: bool | None = False) -> Table:
         del mask_input_cols
         return Table(
             self._frames[split],
@@ -47,10 +53,13 @@ class FakeTask:
             time_col="timestamp",
         )
 
+    def hidden_columns(self) -> list[tuple[str, str]]:
+        return []
+
 
 class FakeDataset:
-    val_timestamp = pd.Timestamp("2024-02-01")
-    test_timestamp = pd.Timestamp("2024-03-01")
+    val_timestamp: pd.Timestamp = cast(pd.Timestamp, pd.Timestamp("2024-02-01"))
+    test_timestamp: pd.Timestamp = cast(pd.Timestamp, pd.Timestamp("2024-03-01"))
 
     def __init__(self) -> None:
         self.task = FakeTask()
@@ -94,9 +103,9 @@ class FakeDataset:
         self.requested_complete_database = not upto_test_timestamp
         return self.database
 
-    def load_task(self, name: str) -> FakeTask:
-        if name != "conversion":
-            raise KeyError(name)
+    def load_task(self, task_name: str) -> RelBenchTask:
+        if task_name != "conversion":
+            raise KeyError(task_name)
         return self.task
 
     def get_task_names(self) -> list[str]:
@@ -146,6 +155,17 @@ class MaterializationTest(unittest.TestCase):
         )
         for split, expected in self.dataset.task._frames.items():
             assert_frame_equal(splits[split], expected)
+
+    def test_mixed_iso_datetime_decoding(self) -> None:
+        frame = pd.DataFrame(
+            {"timestamp": ["2024-01-01T00:00:00", "2024-01-02T00:00:00.123456"]}
+        )
+        columns = (ColumnSchema("timestamp", 0, "datetime64[ns]", "datetime"),)
+
+        decoded = decode_frame(frame, columns)
+
+        self.assertTrue(pd.api.types.is_datetime64_any_dtype(decoded["timestamp"]))
+        self.assertEqual(decoded["timestamp"].iloc[1].microsecond, 123456)
 
     def test_full_memory_iteration_contract(self) -> None:
         reader = PandasDatabaseReader(self.path)

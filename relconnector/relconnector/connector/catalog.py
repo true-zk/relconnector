@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any
 
 METADATA_TABLE = "_relconnector_metadata"
 TABLES_TABLE = "_relconnector_tables"
@@ -27,7 +26,7 @@ class ColumnSchema:
     ordinal: int
     pandas_dtype: str
     encoding: str = "scalar"
-    encoding_metadata: Mapping[str, Any] = field(default_factory=dict)
+    encoding_metadata: Mapping[str, object] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -51,4 +50,4 @@ class TaskMetadata:
     entity_column: str | None = None
     target_column: str | None = None
     time_column: str | None = None
-    extra: Mapping[str, Any] = field(default_factory=dict)
+    extra: Mapping[str, object] = field(default_factory=dict)

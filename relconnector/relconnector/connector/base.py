@@ -6,9 +6,13 @@ import json
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, NamedTuple, TypeVar, cast
 
+import numpy as np
 import pandas as pd
+
+if TYPE_CHECKING:
+    from relbench.base import Database, Table
 
 from .catalog import (
     CATALOG_VERSION,
@@ -27,6 +31,51 @@ from .decoding import decode_frame
 
 def quote_identifier(identifier: str) -> str:
     return '"' + identifier.replace('"', '""') + '"'
+
+
+class _TaskRow(NamedTuple):
+    task_name: object
+    table_name: object
+    task_type: object
+    entity_table: object
+    entity_column: object
+    target_column: object
+    time_column: object
+    extra: object
+
+
+class _TableRow(NamedTuple):
+    table_name: object
+    table_kind: object
+    primary_key: object
+    time_column: object
+    task_name: object
+    split_column: object
+
+
+class _ColumnRow(NamedTuple):
+    table_name: object
+    ordinal_position: object
+    column_name: object
+    pandas_dtype: object
+    encoding: object
+    encoding_metadata: object
+
+
+class _ForeignKeyRow(NamedTuple):
+    table_name: object
+    column_name: object
+    reference_table: object
+    reference_column: object
+
+
+_Row = TypeVar("_Row")
+
+
+def _typed_rows(frame: pd.DataFrame, row_type: type[_Row]) -> Iterator[_Row]:
+    del row_type
+    for row in frame.itertuples(index=False):
+        yield cast(_Row, row)
 
 
 class BaseDatabaseReader(ABC):
@@ -85,9 +134,9 @@ class BaseDatabaseReader(ABC):
                 entity_column=_optional_string(row.entity_column),
                 target_column=_optional_string(row.target_column),
                 time_column=_optional_string(row.time_column),
-                extra=json.loads(str(row.extra)),
+                extra=cast(dict[str, object], json.loads(str(row.extra))),
             )
-            for row in frame.itertuples(index=False)
+            for row in _typed_rows(frame, _TaskRow)
         }
 
     def table_names(self, *, include_tasks: bool = True) -> list[str]:
@@ -129,7 +178,7 @@ class BaseDatabaseReader(ABC):
             for split, rows in frame.groupby(schema.split_column, sort=False)
         }
 
-    def read_relbench_database(self) -> Any:
+    def read_relbench_database(self) -> Database:
         """Reconstruct a ``relbench.base.Database`` from data tables."""
         try:
             from relbench.base import Database, Table
@@ -138,7 +187,7 @@ class BaseDatabaseReader(ABC):
                 "Install relbench to reconstruct a RelBench Database"
             ) from exc
 
-        table_dict = {}
+        table_dict: dict[str, Table] = {}
         for schema in self.schemas().values():
             if schema.kind != "data":
                 continue
@@ -167,12 +216,14 @@ class BaseDatabaseReader(ABC):
         )
 
         result: dict[str, TableSchema] = {}
-        for row in tables.itertuples(index=False):
+        for row in _typed_rows(tables, _TableRow):
             name = str(row.table_name)
-            table_columns = columns[columns["table_name"] == row.table_name]
-            table_foreign_keys = foreign_keys[
-                foreign_keys["table_name"] == row.table_name
-            ]
+            table_columns = cast(
+                pd.DataFrame, columns[columns["table_name"] == row.table_name]
+            )
+            table_foreign_keys = cast(
+                pd.DataFrame, foreign_keys[foreign_keys["table_name"] == row.table_name]
+            )
             result[name] = TableSchema(
                 name=name,
                 primary_key=_optional_string(row.primary_key),
@@ -182,7 +233,7 @@ class BaseDatabaseReader(ABC):
                         reference_table=str(fkey.reference_table),
                         reference_column=str(fkey.reference_column),
                     )
-                    for fkey in table_foreign_keys.itertuples(index=False)
+                    for fkey in _typed_rows(table_foreign_keys, _ForeignKeyRow)
                 ),
                 time_column=_optional_string(row.time_column),
                 columns=tuple(
@@ -191,9 +242,12 @@ class BaseDatabaseReader(ABC):
                         ordinal=int(str(column.ordinal_position)),
                         pandas_dtype=str(column.pandas_dtype),
                         encoding=str(column.encoding),
-                        encoding_metadata=json.loads(str(column.encoding_metadata)),
+                        encoding_metadata=cast(
+                            dict[str, object],
+                            json.loads(str(column.encoding_metadata)),
+                        ),
                     )
-                    for column in table_columns.itertuples(index=False)
+                    for column in _typed_rows(table_columns, _ColumnRow)
                 ),
                 kind=str(row.table_kind),
                 task_name=_optional_string(row.task_name),
@@ -219,8 +273,10 @@ def sqlite_path(url: str) -> str:
     return path
 
 
-def _optional_string(value: Any) -> str | None:
-    try:
-        return None if pd.isna(value) else str(value)
-    except (TypeError, ValueError):
-        return str(value)
+def _optional_string(value: object) -> str | None:
+    if value is None or value is pd.NA or value is pd.NaT:
+        return None
+    missing = pd.isna(value)
+    if isinstance(missing, (bool, np.bool_)) and bool(missing):
+        return None
+    return str(value)

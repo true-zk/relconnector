@@ -5,7 +5,8 @@
 - 从 Hugging Face 下载一个或全部 RelBench 数据集；
 - 加载完整关系表以及可选的全部任务 target；
 - 保存为独立 SQLite 文件；
-- 保存主键、外键、时间列、任务 split 和 pandas dtype 等 catalog；
+- 保存主键、外键、时间列、任务 split、`val_timestamp`、`test_timestamp`
+  和 task manifest 配置等 catalog；
 - 通过临时文件写入和原子替换避免留下半成品数据库。
 
 生成的数据默认位于：
@@ -83,3 +84,9 @@ export HF_TOKEN=YOUR_HUGGING_FACE_TOKEN
 - `download_all.py`：全部数据集批量编排与 CLI。
 
 读取数据库的代码位于 `relconnector/connector/`，不属于本目录。
+
+已有 SQLite 可通过以下命令只更新 task manifest 元数据，无需重写数据表：
+
+```bash
+../.venv/bin/python -m data.update_catalog_metadata
+```

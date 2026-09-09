@@ -6,12 +6,19 @@ import importlib
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
-from datetime import datetime, timezone
-from typing import Any
+from datetime import date, datetime, timezone
+from typing import cast
 
 import numpy as np
 import pandas as pd
+from relbench.base import Database, Table, TaskType
 
+from .contracts import (
+    RelBenchDataset,
+    RelBenchEntityTask,
+    RelBenchRecommendationTask,
+    RelBenchTask,
+)
 from .encoding import infer_columns
 from .models import (
     TARGET_ROW_ID_COLUMN,
@@ -45,8 +52,8 @@ class RelBenchDatasetSource(BaseDatasetSource):
         self,
         *,
         revision: str | None = None,
-        dataset_loader: Callable[[str], Any] | None = None,
-        legacy_task_loader: Callable[[str, str], Any] | None = None,
+        dataset_loader: Callable[[str], RelBenchDataset] | None = None,
+        legacy_task_loader: Callable[[str, str], RelBenchTask] | None = None,
     ) -> None:
         self.revision = revision
         self._dataset_loader = dataset_loader
@@ -62,12 +69,7 @@ class RelBenchDatasetSource(BaseDatasetSource):
         dataset = self._load_dataset(dataset_name)
         selected_tasks = list(dict.fromkeys(task_names))
         if all_tasks:
-            get_task_names = getattr(dataset, "get_task_names", None)
-            if get_task_names is None:
-                raise NotImplementedError(
-                    "This RelBench version cannot enumerate available tasks"
-                )
-            selected_tasks = list(get_task_names())
+            selected_tasks = dataset.get_task_names()
 
         database = _load_complete_database(dataset)
         tables = _database_tables(database)
@@ -112,7 +114,7 @@ class RelBenchDatasetSource(BaseDatasetSource):
             },
         )
 
-    def _load_dataset(self, dataset_name: str) -> Any:
+    def _load_dataset(self, dataset_name: str) -> RelBenchDataset:
         if self._dataset_loader is not None:
             return self._dataset_loader(dataset_name)
 
@@ -121,22 +123,22 @@ class RelBenchDatasetSource(BaseDatasetSource):
         loader = getattr(relbench, "load_dataset", None)
         if loader is not None:
             if self.revision is not None:
-                return loader(dataset_name, revision=self.revision)
-            return loader(dataset_name)
+                return cast(
+                    RelBenchDataset, loader(dataset_name, revision=self.revision)
+                )
+            return cast(RelBenchDataset, loader(dataset_name))
         datasets_module = importlib.import_module("relbench.datasets")
-        return datasets_module.get_dataset(dataset_name)
+        return cast(RelBenchDataset, datasets_module.get_dataset(dataset_name))
 
-    def _load_task(self, dataset: Any, dataset_name: str, task_name: str) -> Any:
-        load_task = getattr(dataset, "load_task", None)
-        if load_task is not None:
-            return load_task(task_name)
+    def _load_task(
+        self, dataset: RelBenchDataset, dataset_name: str, task_name: str
+    ) -> RelBenchTask:
         if self._legacy_task_loader is not None:
             return self._legacy_task_loader(dataset_name, task_name)
-        tasks_module = importlib.import_module("relbench.tasks")
-        return tasks_module.get_task(dataset_name, task_name)
+        return dataset.load_task(task_name)
 
 
-def _load_complete_database(dataset: Any) -> Any:
+def _load_complete_database(dataset: RelBenchDataset) -> Database:
     """Load rows after the test timestamp as well as the training history."""
     try:
         return dataset.get_db(upto_test_timestamp=False)
@@ -147,7 +149,7 @@ def _load_complete_database(dataset: Any) -> Any:
             return dataset.get_db()
 
 
-def _database_tables(database: Any) -> dict[str, MaterializedTable]:
+def _database_tables(database: Database) -> dict[str, MaterializedTable]:
     result: dict[str, MaterializedTable] = {}
     for name, table in database.table_dict.items():
         frame = table.df.copy()
@@ -173,10 +175,10 @@ def _database_tables(database: Any) -> dict[str, MaterializedTable]:
 
 
 def _task_table(
-    task_name: str, table_name: str, task: Any, database: Any
+    task_name: str, table_name: str, task: RelBenchTask, database: Database
 ) -> tuple[MaterializedTable, TaskMetadata]:
     frames: list[pd.DataFrame] = []
-    relation_tables: list[Any] = []
+    relation_tables: list[Table] = []
     for split in ("train", "val", "test"):
         try:
             table = task.get_table(split, mask_input_cols=False)
@@ -201,20 +203,17 @@ def _task_table(
     relation_table = relation_tables[0]
     columns = infer_columns(frame)
     encodings = {column.name: column.encoding for column in columns}
-    foreign_keys = tuple(
-        ForeignKeySchema(
-            column=column,
-            reference_table=reference_table,
-            reference_column=_primary_key(database, reference_table),
-        )
-        for column, reference_table in relation_table.fkey_col_to_pkey_table.items()
-        if encodings.get(column) != "json"
-    )
-    time_column = getattr(relation_table, "time_col", None)
+    foreign_keys = []
+    for column, reference_table in relation_table.fkey_col_to_pkey_table.items():
+        reference_column = database.table_dict[reference_table].pkey_col
+        if encodings.get(column) == "json" or reference_column is None:
+            continue
+        foreign_keys.append(ForeignKeySchema(column, reference_table, reference_column))
+    time_column = relation_table.time_col
     schema = TableSchema(
         name=table_name,
         primary_key=TARGET_ROW_ID_COLUMN,
-        foreign_keys=foreign_keys,
+        foreign_keys=tuple(foreign_keys),
         time_column=time_column,
         columns=columns,
         kind="task",
@@ -222,32 +221,45 @@ def _task_table(
         split_column=TARGET_SPLIT_COLUMN,
     )
 
-    task_type = getattr(task, "task_type", None)
-    task_type = getattr(task_type, "value", task_type)
+    if task.task_type == TaskType.RECOMMENDATION:
+        recommendation_task = cast(RelBenchRecommendationTask, task)
+        entity_table = recommendation_task.src_entity_table
+        entity_column = recommendation_task.src_entity_col
+        target_column = recommendation_task.dst_entity_col
+        dst_entity_table = recommendation_task.dst_entity_table
+        dst_entity_column = recommendation_task.dst_entity_col
+        eval_k = recommendation_task.eval_k
+    else:
+        entity_task = cast(RelBenchEntityTask, task)
+        entity_table = entity_task.entity_table
+        entity_column = entity_task.entity_col
+        target_column = entity_task.target_col
+        dst_entity_table = None
+        dst_entity_column = None
+        eval_k = None
+
     metadata = TaskMetadata(
         name=task_name,
         table_name=table_name,
-        task_type=str(task_type) if task_type is not None else None,
-        entity_table=getattr(
-            task, "entity_table", getattr(task, "src_entity_table", None)
-        ),
-        entity_column=getattr(
-            task, "entity_col", getattr(task, "src_entity_col", None)
-        ),
-        target_column=getattr(
-            task, "target_col", getattr(task, "dst_entity_col", None)
-        ),
-        time_column=getattr(task, "time_col", time_column),
+        task_type=task.task_type.value,
+        entity_table=entity_table,
+        entity_column=entity_column,
+        target_column=target_column,
+        time_column=task.time_col,
         extra={
-            "kind": getattr(task, "kind", None),
-            "dst_entity_table": getattr(task, "dst_entity_table", None),
-            "dst_entity_column": getattr(task, "dst_entity_col", None),
+            "kind": task.kind,
+            "dst_entity_table": dst_entity_table,
+            "dst_entity_column": dst_entity_column,
+            "hidden_columns": _hidden_columns(task),
+            "timedelta": str(task.timedelta),
+            "num_eval_timestamps": task.num_eval_timestamps,
+            "eval_k": eval_k,
         },
     )
     return MaterializedTable(frame=frame, schema=schema), metadata
 
 
-def _primary_key(database: Any, table_name: str) -> str:
+def _primary_key(database: Database, table_name: str) -> str:
     primary_key = database.table_dict[table_name].pkey_col
     if primary_key is None:
         raise ValueError(f"Foreign-key target table {table_name!r} has no primary key")
@@ -263,5 +275,13 @@ def _target_table_name(task_name: str, number_of_tasks: int) -> str:
     return f"target_{slug}"
 
 
-def _optional_iso(value: Any) -> str:
+def _optional_iso(value: pd.Timestamp | datetime | date | str | None) -> str:
     return "" if value is None else pd.Timestamp(value).isoformat()
+
+
+def _hidden_columns(task: RelBenchTask) -> list[list[str]]:
+    return [[str(table), str(column)] for table, column in task.hidden_columns()]
+
+
+def _optional_string(value: object) -> str | None:
+    return None if value is None else str(value)

@@ -16,7 +16,8 @@ dependencies = [
 [project.optional-dependencies]
 connectorx = ["connectorx>=0.4"]
 relbench = ["relbench>=3.0"]
-dev = ["ruff>=0.16"]
+training = ["relbench[full]>=3.0,<4", "sentence-transformers>=5"]
+dev = ["pyright>=1.1.400", "ruff>=0.16"]
 
 [tool.setuptools.packages.find]
 include = ["relconnector*"]

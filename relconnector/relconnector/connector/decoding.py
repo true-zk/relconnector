@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterable
 from decimal import Decimal
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -18,16 +19,16 @@ def decode_frame(frame: pd.DataFrame, columns: Iterable[ColumnSchema]) -> pd.Dat
     for column in ordered_columns:
         if column.name not in result:
             raise ValueError(f"Query result is missing column {column.name!r}")
-        series = result[column.name]
+        series = cast(pd.Series, result[column.name])
         if column.encoding == "json":
             result[column.name] = series.map(
                 lambda value: None if _is_null(value) else json.loads(str(value))
             )
         elif column.encoding == "datetime":
-            result[column.name] = pd.to_datetime(series)
+            result[column.name] = pd.to_datetime(series, format="mixed")
         elif column.encoding == "timedelta_ns":
             result[column.name] = pd.to_timedelta(
-                pd.to_numeric(series, errors="coerce"), unit="ns"
+                cast(pd.Series, pd.to_numeric(series, errors="coerce")), unit="ns"
             )
         elif column.encoding == "decimal":
             result[column.name] = series.map(

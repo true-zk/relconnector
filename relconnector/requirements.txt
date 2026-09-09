@@ -1,5 +1,7 @@
 pandas>=2.0
 
-# Optional reader and RelBench object reconstruction support.
+# Install the matching torch and pyg-lib wheels documented in readme.md first.
+# Optional reader and local RelBench training support.
 connectorx>=0.4
-relbench>=3.0
+relbench[full]>=3.0,<4
+sentence-transformers>=5
