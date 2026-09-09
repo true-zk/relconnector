@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import math
+from collections.abc import Sequence
+
 import torch
 from sentence_transformers import SentenceTransformer
 
@@ -19,5 +22,16 @@ class GloveTextEmbedder:
             device=None if self._device is None else str(self._device),
         )
 
-    def __call__(self, sentences: list[str]) -> torch.Tensor:
-        return self._model.encode(sentences, convert_to_tensor=True)
+    def __call__(self, sentences: Sequence[object]) -> torch.Tensor:
+        normalized = [_normalize_text(value) for value in sentences]
+        return self._model.encode(normalized, convert_to_tensor=True)
+
+
+def _normalize_text(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, float) and math.isnan(value):
+        return ""
+    return str(value)

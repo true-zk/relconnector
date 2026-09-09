@@ -19,6 +19,7 @@ from relconnector.pipeline.dataset import (
     _validate_and_correct_database,
 )
 from relconnector.pipeline.telemetry import TelemetryRecorder, timed
+from relconnector.pipeline.text_embedder import _normalize_text
 
 
 class LocalTaskTest(unittest.TestCase):
@@ -110,6 +111,14 @@ class LocalTaskTest(unittest.TestCase):
 
         self.assertEqual(corrected.table_dict["events"].df["user_id"].iloc[0], 0)
         self.assertTrue(pd.isna(corrected.table_dict["events"].df["user_id"].iloc[1]))
+
+
+class TextEmbedderTest(unittest.TestCase):
+    def test_normalizes_missing_and_non_string_values(self) -> None:
+        self.assertEqual(_normalize_text(None), "")
+        self.assertEqual(_normalize_text(float("nan")), "")
+        self.assertEqual(_normalize_text("hello"), "hello")
+        self.assertEqual(_normalize_text(42), "42")
 
 
 class TelemetryTest(unittest.TestCase):
