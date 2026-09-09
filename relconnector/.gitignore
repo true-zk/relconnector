@@ -1,2 +1,4 @@
 benchmarks/*.jsonl
 data/relbench/*.materialized/
+
+benchmarks/.relconnector-benchmark-*/
