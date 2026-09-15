@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import subprocess
 import sys
 import tempfile
 import time
@@ -14,15 +13,20 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal, TypeAlias, TypedDict, cast
 
-from ..connector import create_reader
-from .config import TrainingConfig
-from .facade import RelBenchModel
+from baseline.config import TrainingConfig
+
+from .cases import DEFAULT_DATABASE_DIR, discover_cases
+from .cases import prepare_output as _prepare_output
+from .metadata import ExperimentMetadata
+from .process import ProcessMeasurement, run_measured_process
 from .result import TrainingTelemetryReport
 
-DEFAULT_DATABASE_DIR = Path(__file__).resolve().parents[2] / "data" / "relbench"
+
+class ProcessEnvelope(TypedDict, total=False):
+    process: ProcessMeasurement
 
 
-class BenchmarkPayloadBase(TypedDict):
+class BenchmarkPayloadBase(ProcessEnvelope):
     dataset: str
     task: str
     model: str
@@ -37,6 +41,7 @@ class SuccessPayload(BenchmarkPayloadBase):
     completed_batches: int
     completed_examples: int
     losses: list[float]
+    experiment: ExperimentMetadata
     telemetry: TrainingTelemetryReport
 
 
@@ -54,27 +59,10 @@ class ErrorPayload(BenchmarkPayloadBase):
 BenchmarkPayload: TypeAlias = SuccessPayload | ErrorPayload
 
 
-def discover_cases(
-    database_dir: Path,
-    *,
-    datasets: set[str],
-    tasks: set[str],
-) -> list[tuple[str, str]]:
-    """Return sorted dataset/task pairs from local SQLite catalogs."""
-    cases: list[tuple[str, str]] = []
-    for path in sorted(database_dir.glob("*.sqlite")):
-        dataset = path.stem
-        if datasets and dataset not in datasets:
-            continue
-        reader = create_reader("pandas", path)
-        for task in sorted(reader.task_metadata()):
-            if not tasks or task in tasks:
-                cases.append((dataset, task))
-    return cases
-
-
 def run_worker(args: argparse.Namespace) -> int:
     """Run one task and atomically publish its result to the parent."""
+    from .baseline import BaselineExperiment
+
     config = TrainingConfig(
         batch_size=args.batch_size,
         num_neighbors=_parse_neighbors(args.num_neighbors),
@@ -84,14 +72,21 @@ def run_worker(args: argparse.Namespace) -> int:
         num_workers=args.num_workers,
         seed=args.seed,
         device=args.device,
+        torch_num_threads=args.torch_num_threads,
         text_batch_size=args.text_batch_size,
         telemetry_interval_s=args.telemetry_interval,
         cache_materialization=args.cache_materialization,
+        graph_scan_batch_size=args.graph_scan_batch_size,
+        seed_shuffle_block_size=args.seed_shuffle_block_size,
+        executor=args.executor,
+        seed_queue_bytes=args.seed_queue_mb * 1024 * 1024,
+        plan_queue_bytes=args.plan_queue_mb * 1024 * 1024,
+        ready_queue_bytes=args.ready_queue_mb * 1024 * 1024,
     )
     started = time.perf_counter()
     payload: BenchmarkPayload
     try:
-        result = RelBenchModel(
+        result = BaselineExperiment(
             dataset=args.worker_dataset,
             task=args.worker_task,
             model=args.model,
@@ -191,30 +186,32 @@ def _run_isolated_case(
         result_path=result_path,
     )
     started = time.perf_counter()
-    try:
-        process = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            timeout=args.task_timeout,
-            check=False,
-        )
-    except subprocess.TimeoutExpired as exc:
-        return _parent_error(
+    process = run_measured_process(command, timeout_s=args.task_timeout)
+    if process.timed_out:
+        error = _parent_error(
             args,
             dataset,
             task,
             "TaskTimeout",
             f"worker exceeded {args.task_timeout} seconds",
             started,
-            stdout=_stream_text(exc.stdout),
-            stderr=_stream_text(exc.stderr),
+            stdout=process.stdout,
+            stderr=process.stderr,
+            measurement=process.measurement(),
         )
+        error["process"] = process.measurement()
+        return error
 
     if result_path.exists():
         try:
-            return cast(BenchmarkPayload, json.loads(result_path.read_text()))
-        except (json.JSONDecodeError, OSError) as exc:
+            result = cast(BenchmarkPayload, json.loads(result_path.read_text()))
+            if result["status"] == "ok" and process.returncode != 0:
+                raise ValueError(
+                    f"worker published success but exited {process.returncode}"
+                )
+            result["process"] = process.measurement()
+            return result
+        except (ValueError, OSError) as exc:
             return _parent_error(
                 args,
                 dataset,
@@ -225,6 +222,7 @@ def _run_isolated_case(
                 returncode=process.returncode,
                 stdout=process.stdout,
                 stderr=process.stderr,
+                measurement=process.measurement(),
             )
 
     return _parent_error(
@@ -237,6 +235,7 @@ def _run_isolated_case(
         returncode=process.returncode,
         stdout=process.stdout,
         stderr=process.stderr,
+        measurement=process.measurement(),
     )
 
 
@@ -250,7 +249,7 @@ def _worker_command(
     command = [
         sys.executable,
         "-m",
-        "relconnector.pipeline.benchmark",
+        "benchmark.runner",
         "--worker",
         "--worker-dataset",
         dataset,
@@ -278,8 +277,22 @@ def _worker_command(
         str(args.seed),
         "--text-batch-size",
         str(args.text_batch_size),
+        "--torch-num-threads",
+        str(args.torch_num_threads),
         "--telemetry-interval",
         str(args.telemetry_interval),
+        "--graph-scan-batch-size",
+        str(args.graph_scan_batch_size),
+        "--seed-shuffle-block-size",
+        str(args.seed_shuffle_block_size),
+        "--executor",
+        args.executor,
+        "--seed-queue-mb",
+        str(args.seed_queue_mb),
+        "--plan-queue-mb",
+        str(args.plan_queue_mb),
+        "--ready-queue-mb",
+        str(args.ready_queue_mb),
     ]
     if args.max_batches is not None:
         command.extend(["--max-batches", str(args.max_batches)])
@@ -303,8 +316,9 @@ def _parent_error(
     returncode: int | None = None,
     stdout: str = "",
     stderr: str = "",
+    measurement: ProcessMeasurement | None = None,
 ) -> ErrorPayload:
-    return {
+    result: ErrorPayload = {
         "status": "error",
         "dataset": dataset,
         "task": task,
@@ -318,31 +332,9 @@ def _parent_error(
         "worker_stdout": stdout[-8_000:],
         "worker_stderr": stderr[-8_000:],
     }
-
-
-def _prepare_output(
-    output: Path,
-    *,
-    resume: bool,
-    overwrite: bool,
-) -> set[tuple[str, str]]:
-    if overwrite:
-        output.unlink(missing_ok=True)
-        return set()
-    if not output.exists():
-        return set()
-    if not resume:
-        raise FileExistsError(f"{output} already exists; pass --resume or --overwrite")
-
-    completed: set[tuple[str, str]] = set()
-    for line_number, line in enumerate(output.read_text().splitlines(), start=1):
-        try:
-            payload = cast(BenchmarkPayload, json.loads(line))
-        except json.JSONDecodeError as exc:
-            raise ValueError(f"Invalid JSONL at {output}:{line_number}: {exc}") from exc
-        if payload.get("status") == "ok":
-            completed.add((str(payload["dataset"]), str(payload["task"])))
-    return completed
+    if measurement is not None:
+        result["process"] = measurement
+    return result
 
 
 def _write_json(path: Path, payload: BenchmarkPayload) -> None:
@@ -361,12 +353,6 @@ def _append_jsonl(path: Path, payload: BenchmarkPayload) -> None:
 
 def _peak_rss(payload: SuccessPayload) -> float:
     return float(payload["telemetry"]["overall"]["peak"]["rss_mb"])
-
-
-def _stream_text(value: str | bytes | None) -> str:
-    if value is None:
-        return ""
-    return value.decode(errors="replace") if isinstance(value, bytes) else value
 
 
 def _parse_neighbors(value: str) -> list[int]:
@@ -409,8 +395,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device")
+    parser.add_argument("--torch-num-threads", type=int, default=1)
     parser.add_argument("--text-batch-size", type=int, default=256)
     parser.add_argument("--telemetry-interval", type=float, default=0.05)
+    parser.add_argument("--graph-scan-batch-size", type=int, default=1_000_000)
+    parser.add_argument("--seed-shuffle-block-size", type=int, default=65_536)
+    parser.add_argument("--executor", choices=("sync", "async"), default="sync")
+    parser.add_argument("--seed-queue-mb", type=int, default=64)
+    parser.add_argument("--plan-queue-mb", type=int, default=2048)
+    parser.add_argument("--ready-queue-mb", type=int, default=8192)
     parser.add_argument("--task-timeout", type=float)
     parser.add_argument("--no-text", action="store_true")
     parser.add_argument("--cache-materialization", action="store_true")
@@ -433,6 +426,8 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--batch-size must be greater than zero")
     if args.telemetry_interval <= 0:
         raise ValueError("--telemetry-interval must be greater than zero")
+    if args.torch_num_threads <= 0:
+        raise ValueError("--torch-num-threads must be greater than zero")
     _parse_neighbors(args.num_neighbors)
 
     if args.worker:

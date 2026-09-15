@@ -9,8 +9,8 @@ import numpy as np
 import pandas as pd
 from relbench.base import Database, Table, TaskType
 
-from ..connector import BaseDatabaseReader, create_reader
-from ..connector.catalog import TaskMetadata
+from relconnector.connector import BaseDatabaseReader, create_reader
+from relconnector.connector.catalog import TaskMetadata
 
 
 @dataclass
@@ -132,7 +132,7 @@ def _validate_and_correct_database(database: Database) -> Database:
 
 def default_sqlite_path(dataset_name: str, root: Path | None = None) -> Path:
     if root is None:
-        root = Path(__file__).resolve().parents[2] / "data" / "relbench"
+        root = Path(__file__).resolve().parents[1] / "data" / "relbench"
     return root / f"{dataset_name}.sqlite"
 
 

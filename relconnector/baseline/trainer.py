@@ -1,10 +1,11 @@
-"""Measured training loops for entity and recommendation tasks."""
+"""Eager training loops with optional, implementation-neutral instrumentation."""
 
 from __future__ import annotations
 
 from collections.abc import Iterable
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass
-from typing import cast
+from typing import Protocol, cast
 
 import torch
 from relbench.base import TaskType
@@ -12,9 +13,21 @@ from torch_geometric.data import HeteroData
 
 from .dataset import LocalEntityTask, LocalRecommendationTask, LocalTask
 from .models import BaseLinkRelBenchModel, BaseRelBenchModel
-from .telemetry import TelemetryRecorder
 
 LinkBatch = tuple[HeteroData, HeteroData, HeteroData]
+
+
+class OperationObserver(Protocol):
+    def operation(
+        self, name: str, *, synchronize_cuda: bool = False
+    ) -> AbstractContextManager[None]: ...
+
+
+class _NoOpObserver:
+    def operation(
+        self, name: str, *, synchronize_cuda: bool = False
+    ) -> AbstractContextManager[None]:
+        return nullcontext()
 
 
 @dataclass(frozen=True)
@@ -32,10 +45,11 @@ def train_one_epoch(
     optimizer: torch.optim.Optimizer,
     device: torch.device,
     target_dtype: torch.dtype,
-    recorder: TelemetryRecorder,
     *,
+    observer: OperationObserver | None = None,
     max_batches: int | None = None,
 ) -> EpochStats:
+    observer = observer or _NoOpObserver()
     model.train()
     total_loss = 0.0
     total_examples = 0
@@ -44,7 +58,7 @@ def train_one_epoch(
 
     while max_batches is None or batches < max_batches:
         try:
-            with recorder.operation("sampling"):
+            with observer.operation("sample_and_prepare"):
                 batch = next(iterator)
         except StopIteration:
             break
@@ -59,7 +73,7 @@ def train_one_epoch(
                 loss_fn,
                 optimizer,
                 device,
-                recorder,
+                observer,
             )
         else:
             if not isinstance(model, BaseRelBenchModel):
@@ -72,7 +86,7 @@ def train_one_epoch(
                 optimizer,
                 device,
                 target_dtype,
-                recorder,
+                observer,
             )
         batches += 1
         total_examples += batch_size
@@ -93,12 +107,12 @@ def _entity_step(
     optimizer: torch.optim.Optimizer,
     device: torch.device,
     target_dtype: torch.dtype,
-    recorder: TelemetryRecorder,
+    observer: OperationObserver,
 ) -> tuple[float, int]:
-    with recorder.operation("h2d", synchronize_cuda=True):
+    with observer.operation("h2d", synchronize_cuda=True):
         batch = batch.to(device)
     optimizer.zero_grad(set_to_none=True)
-    with recorder.operation("forward", synchronize_cuda=True):
+    with observer.operation("forward", synchronize_cuda=True):
         prediction = model(batch, task.entity_table)
         target = batch[task.entity_table].y.to(target_dtype)
         if task.task_type not in {
@@ -107,12 +121,11 @@ def _entity_step(
         }:
             prediction = prediction.view(-1)
         loss = loss_fn(prediction, target)
-    with recorder.operation("backward", synchronize_cuda=True):
+    with observer.operation("backward", synchronize_cuda=True):
         loss.backward()
-    with recorder.operation("optimizer_step", synchronize_cuda=True):
+    with observer.operation("optimizer_step", synchronize_cuda=True):
         optimizer.step()
-    batch_size = int(batch[task.entity_table].batch_size)
-    return float(loss.detach().cpu()), batch_size
+    return float(loss.detach().cpu()), int(batch[task.entity_table].batch_size)
 
 
 def _link_step(
@@ -122,14 +135,14 @@ def _link_step(
     loss_fn: torch.nn.Module,
     optimizer: torch.optim.Optimizer,
     device: torch.device,
-    recorder: TelemetryRecorder,
+    observer: OperationObserver,
 ) -> tuple[float, int]:
-    with recorder.operation("h2d", synchronize_cuda=True):
+    with observer.operation("h2d", synchronize_cuda=True):
         src_batch, pos_dst_batch, neg_dst_batch = (
             sampled.to(device) for sampled in batch
         )
     optimizer.zero_grad(set_to_none=True)
-    with recorder.operation("forward", synchronize_cuda=True):
+    with observer.operation("forward", synchronize_cuda=True):
         positive, negative = model(
             src_batch,
             pos_dst_batch,
@@ -138,9 +151,8 @@ def _link_step(
             task.dst_entity_table,
         )
         loss = loss_fn(positive, negative)
-    with recorder.operation("backward", synchronize_cuda=True):
+    with observer.operation("backward", synchronize_cuda=True):
         loss.backward()
-    with recorder.operation("optimizer_step", synchronize_cuda=True):
+    with observer.operation("optimizer_step", synchronize_cuda=True):
         optimizer.step()
-    batch_size = int(src_batch[task.src_entity_table].batch_size)
-    return float(loss.detach().cpu()), batch_size
+    return float(loss.detach().cpu()), int(src_batch[task.src_entity_table].batch_size)

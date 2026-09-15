@@ -14,13 +14,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-connectorx = ["connectorx>=0.4"]
+connectorx = ["connectorx>=0.4.5", "pyarrow>=14"]
 relbench = ["relbench>=3.0"]
 training = ["relbench[full]>=3.0,<4", "sentence-transformers>=5"]
 dev = ["pyright>=1.1.400", "ruff>=0.16"]
 
 [tool.setuptools.packages.find]
-include = ["relconnector*"]
+include = ["relconnector", "relconnector.*", "baseline", "baseline.*", "benchmark", "benchmark.*"]
+namespaces = false
 
 [tool.ruff]
 line-length = 88

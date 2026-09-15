@@ -2,3 +2,9 @@ benchmarks/*.jsonl
 data/relbench/*.materialized/
 
 benchmarks/.relconnector-benchmark-*/
+benchmarks/.online-benchmark-*/
+benchmarks/.validation-*/
+
+__pycache__/
+*.egg-info/
+build/

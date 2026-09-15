@@ -3,6 +3,8 @@ ref_repos/
 .vscode/
 .agent/
 .sumi/
+.forge/
+.ruff_cache/
 
 __pycache__/
 relconnector/.ruff_cache/

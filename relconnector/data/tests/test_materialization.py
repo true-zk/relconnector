@@ -167,12 +167,15 @@ class MaterializationTest(unittest.TestCase):
         self.assertTrue(pd.api.types.is_datetime64_any_dtype(decoded["timestamp"]))
         self.assertEqual(decoded["timestamp"].iloc[1].microsecond, 123456)
 
-    def test_full_memory_iteration_contract(self) -> None:
+    def test_pandas_iteration_supports_full_and_chunked_reads(self) -> None:
         reader = PandasDatabaseReader(self.path)
-        batches = list(reader.iter_query('SELECT * FROM "users"'))
-        self.assertEqual(len(batches), 1)
-        with self.assertRaises(NotImplementedError):
-            list(reader.iter_query('SELECT * FROM "users"', batch_size=2))
+        full = list(reader.iter_query('SELECT * FROM "users"'))
+        chunks = list(
+            reader.iter_query('SELECT * FROM "users" ORDER BY user_id', batch_size=2)
+        )
+
+        self.assertEqual(len(full), 1)
+        self.assertEqual([len(chunk) for chunk in chunks], [2, 1])
 
     @unittest.skipUnless(
         importlib.util.find_spec("connectorx"), "connectorx is not installed"

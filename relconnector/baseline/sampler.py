@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import cast
 
-from relbench.base import EntityTask, RecommendationTask
+import pandas as pd
+from relbench.base import EntityTask, RecommendationTask, Table
 from relbench.modeling.graph import (
     get_link_train_table_input,
     get_node_train_table_input,
@@ -15,6 +16,15 @@ from torch_geometric.loader import NeighborLoader
 
 from .config import TrainingConfig
 from .dataset import LocalEntityTask, LocalRecommendationTask, LocalTask
+
+
+def _train_table(task: LocalTask) -> Table:
+    table = task.get_table("train")
+    if table.time_col is not None:
+        table.df[table.time_col] = cast(pd.Series, table.df[table.time_col]).dt.as_unit(
+            "ns"
+        )
+    return table
 
 
 def make_train_loader(
@@ -32,7 +42,7 @@ def _make_node_loader(
     task: LocalEntityTask,
     config: TrainingConfig,
 ) -> NeighborLoader:
-    inp = get_node_train_table_input(task.get_table("train"), cast(EntityTask, task))
+    inp = get_node_train_table_input(_train_table(task), cast(EntityTask, task))
     if inp.time is None:
         return NeighborLoader(
             data,
@@ -64,7 +74,7 @@ def _make_link_loader(
 ) -> LinkNeighborLoader:
     num_dst_nodes = int(data[task.dst_entity_table].num_nodes)
     inp = get_link_train_table_input(
-        task.get_table("train"),
+        _train_table(task),
         cast(RecommendationTask, task),
         num_dst_nodes,
     )

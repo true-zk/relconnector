@@ -10,16 +10,16 @@ from unittest.mock import patch
 import pandas as pd
 from relbench.base import Database, Table, TaskType
 
-from relconnector.connector.catalog import TaskMetadata
-from relconnector.pipeline.benchmark import _prepare_output, discover_cases
-from relconnector.pipeline.dataset import (
+from baseline.dataset import (
     LocalEntityTask,
     LocalRecommendationTask,
     _build_task,
     _validate_and_correct_database,
 )
-from relconnector.pipeline.telemetry import TelemetryRecorder, timed
-from relconnector.pipeline.text_embedder import _normalize_text
+from baseline.text_embedder import _normalize_text
+from benchmark.runner import _prepare_output, discover_cases
+from benchmark.telemetry import TelemetryRecorder, timed
+from relconnector.connector.catalog import TaskMetadata
 
 
 class LocalTaskTest(unittest.TestCase):
@@ -166,7 +166,7 @@ class BenchmarkTest(unittest.TestCase):
                 return Reader(tasks)
 
             with patch(
-                "relconnector.pipeline.benchmark.create_reader",
+                "benchmark.cases.create_reader",
                 side_effect=reader_factory,
             ):
                 cases = discover_cases(

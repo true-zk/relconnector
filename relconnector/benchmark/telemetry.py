@@ -7,18 +7,16 @@ import contextvars
 import functools
 import os
 import platform
-import statistics
+import random
 import sys
 import threading
 import time
-from collections import defaultdict
+from collections import deque
 from collections.abc import Callable, Generator
 from dataclasses import dataclass
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import ParamSpec, TypedDict, TypeVar
-
-import torch
-import torch.version as torch_version
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -67,6 +65,8 @@ class OperationStats(TypedDict):
     p95_s: float
     p99_s: float
     per_second: float
+    percentile_samples: int
+    percentile_method: str
 
 
 class OverallTelemetry(TypedDict):
@@ -90,6 +90,26 @@ class TelemetryReport(TypedDict):
     overall: OverallTelemetry
     phases: list[PhaseData]
     operations: dict[str, OperationStats]
+    phase_records_dropped: int
+
+
+class _OperationAccumulator:
+    def __init__(self, capacity: int) -> None:
+        self.capacity = capacity
+        self.count = 0
+        self.total = 0.0
+        self.samples: list[float] = []
+        self.rng = random.Random(42)
+
+    def add(self, duration: float) -> None:
+        self.count += 1
+        self.total += duration
+        if len(self.samples) < self.capacity:
+            self.samples.append(duration)
+        else:
+            index = self.rng.randrange(self.count)
+            if index < self.capacity:
+                self.samples[index] = duration
 
 
 class _ResourceSampler:
@@ -124,10 +144,21 @@ class _ResourceSampler:
 class TelemetryRecorder:
     """Collect hierarchical phase measurements and repeated operation timings."""
 
-    def __init__(self, *, sample_interval_s: float = 0.05) -> None:
+    def __init__(
+        self,
+        *,
+        sample_interval_s: float = 0.05,
+        max_operation_samples: int = 4096,
+        max_phase_records: int = 4096,
+    ) -> None:
+        if sample_interval_s <= 0 or min(max_operation_samples, max_phase_records) <= 0:
+            raise ValueError("sampling interval and retention limits must be positive")
         self.sample_interval_s = sample_interval_s
-        self.phases: list[PhaseRecord] = []
-        self.operations: dict[str, list[float]] = defaultdict(list)
+        self.max_operation_samples = max_operation_samples
+        self.phases: deque[PhaseRecord] = deque(maxlen=max_phase_records)
+        self.operations: dict[str, _OperationAccumulator] = {}
+        self._lock = threading.Lock()
+        self._phase_records_dropped = 0
         self._overall_sampler: _ResourceSampler | None = None
         self._overall_before: ResourceSnapshot | None = None
         self._overall_after: ResourceSnapshot | None = None
@@ -165,7 +196,10 @@ class TelemetryRecorder:
             duration = time.perf_counter() - started
             after = _snapshot()
             peak = sampler.stop()
-            self.phases.append(PhaseRecord(name, duration, before, after, peak))
+            with self._lock:
+                if len(self.phases) == self.phases.maxlen:
+                    self._phase_records_dropped += 1
+                self.phases.append(PhaseRecord(name, duration, before, after, peak))
 
     @contextlib.contextmanager
     def operation(
@@ -174,14 +208,29 @@ class TelemetryRecorder:
         if synchronize_cuda:
             _synchronize_cuda()
         started = time.perf_counter()
+        completed = False
         try:
             yield
+            completed = True
         finally:
             if synchronize_cuda:
                 _synchronize_cuda()
-            self.operations[name].append(time.perf_counter() - started)
+            if completed:
+                duration = time.perf_counter() - started
+                with self._lock:
+                    if name not in self.operations:
+                        self.operations[name] = _OperationAccumulator(
+                            self.max_operation_samples
+                        )
+                    self.operations[name].add(duration)
 
     def report(self) -> TelemetryReport:
+        with self._lock:
+            phases = [_phase_data(phase) for phase in self.phases]
+            operations = {
+                name: _operation_stats(samples)
+                for name, samples in self.operations.items()
+            }
         return {
             "environment": _environment(),
             "overall": _overall_dict(
@@ -190,11 +239,9 @@ class TelemetryRecorder:
                 self._overall_peak,
                 self._overall_duration_s,
             ),
-            "phases": [_phase_data(phase) for phase in self.phases],
-            "operations": {
-                name: _operation_stats(samples)
-                for name, samples in self.operations.items()
-            },
+            "phases": phases,
+            "operations": operations,
+            "phase_records_dropped": self._phase_records_dropped,
         }
 
 
@@ -220,7 +267,9 @@ def timed(
 def _snapshot() -> ResourceSnapshot:
     cuda_allocated = 0.0
     cuda_reserved = 0.0
-    if torch.cuda.is_available():
+    if _cuda_available():
+        import torch
+
         cuda_allocated = _mb(torch.cuda.memory_allocated())
         cuda_reserved = _mb(torch.cuda.memory_reserved())
     return ResourceSnapshot(
@@ -245,18 +294,24 @@ def _system_used_bytes() -> int:
 
 
 def _synchronize_cuda() -> None:
-    if torch.cuda.is_available():
+    if _cuda_available():
+        import torch
+
         torch.cuda.synchronize()
 
 
 def _reset_cuda_peak_memory() -> None:
-    if torch.cuda.is_available():
+    if _cuda_available():
+        import torch
+
         torch.cuda.reset_peak_memory_stats()
 
 
 def _with_cuda_allocator_peak(snapshot: ResourceSnapshot) -> ResourceSnapshot:
-    if not torch.cuda.is_available():
+    if not _cuda_available():
         return snapshot
+    import torch
+
     return ResourceSnapshot(
         rss_mb=snapshot.rss_mb,
         system_used_mb=snapshot.system_used_mb,
@@ -271,17 +326,21 @@ def _with_cuda_allocator_peak(snapshot: ResourceSnapshot) -> ResourceSnapshot:
     )
 
 
-def _operation_stats(samples: list[float]) -> OperationStats:
-    ordered = sorted(samples)
-    total = sum(ordered)
+def _operation_stats(samples: _OperationAccumulator) -> OperationStats:
+    ordered = sorted(samples.samples)
+    total = samples.total
     return {
-        "count": len(ordered),
+        "count": samples.count,
         "total_s": total,
-        "mean_s": statistics.fmean(ordered),
+        "mean_s": total / samples.count if samples.count else 0.0,
         "p50_s": _percentile(ordered, 0.50),
         "p95_s": _percentile(ordered, 0.95),
         "p99_s": _percentile(ordered, 0.99),
-        "per_second": len(ordered) / total if total else 0.0,
+        "per_second": samples.count / total if total else 0.0,
+        "percentile_samples": len(ordered),
+        "percentile_method": (
+            "exact" if samples.count <= samples.capacity else "reservoir"
+        ),
     }
 
 
@@ -328,16 +387,34 @@ def _phase_data(phase: PhaseRecord) -> PhaseData:
 
 
 def _environment() -> EnvironmentData:
+    try:
+        torch_version = version("torch")
+    except PackageNotFoundError:
+        torch_version = "not-installed"
+    cuda_build = None
+    cuda_device = None
+    if "torch" in sys.modules:
+        import torch.version
+
+        cuda_build = torch.version.cuda
+        if _cuda_available():
+            cuda_device = torch.cuda.get_device_name()
     return {
         "python": sys.version.split()[0],
         "platform": platform.platform(),
-        "torch": torch.__version__,
-        "cuda_build": torch_version.cuda,
-        "cuda_available": torch.cuda.is_available(),
-        "cuda_device": (
-            torch.cuda.get_device_name() if torch.cuda.is_available() else None
-        ),
+        "torch": torch_version,
+        "cuda_build": cuda_build,
+        "cuda_available": _cuda_available(),
+        "cuda_device": cuda_device,
     }
+
+
+def _cuda_available() -> bool:
+    if "torch" not in sys.modules:
+        return False
+    import torch
+
+    return torch.cuda.is_available()
 
 
 def _mb(byte_count: float) -> float:

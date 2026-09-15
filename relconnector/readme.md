@@ -1,115 +1,72 @@
 # relconnector
 
-本项目将 RelBench 的数据准备与训练运行时拆开：
+面向内存受限场景的关系数据库图训练实验项目。SQLite 是业务数据源；在线训练只常驻图拓扑，按采样结果读取节点特征，不生成特征快照或预采样训练集。
 
-- [`data/`](data/README.md)：下载 RelBench 数据库、task manifest 和
-  train/val/test split，并完整保存到本地 SQLite。
-- [`relconnector/connector/`](relconnector/connector/README.md)：通过 pandas 或
-  Connector-X 从 SQL 重建 `Database`。
-- [`relconnector/pipeline/`](relconnector/pipeline/)：本地图物化、pyg-lib
-  邻居采样、PyG GraphSAGE 训练及时间/内存监控。
+## 目录与依赖
 
-训练阶段不会调用 `RelBenchDataset.get_db()`，也不会从 Hugging Face 下载
-`db.zip`。默认 GloVe 文本编码器首次初始化时仍需下载其模型。
+- [data/](data/README.md)：纯离线下载与 SQLite 落库，保存任务 split、schema、时间配置。
+- [relconnector/](relconnector/README.md)：在线 reader、图索引、采样、特征缓存、组装、训练和 executor。
+- [baseline/](baseline/README.md)：保留全量读库和 TensorFrame 物化的朴素实现。
+- [benchmark/](benchmark/README.md)：通用计时/内存工具、实验编排、子进程运行与结果比较。
 
-## 训练环境
+训练实现不依赖 benchmark；benchmark 调用两套实现。benchmark/ 是代码，benchmarks/ 是实验产物，data/relbench/ 是数据库。安装包含三个运行包，不包含离线工具、SQLite 或实验产物。
 
-pyg-lib 必须与 PyTorch 和 CUDA ABI 匹配。当前已验证的组合是：
+## 环境
 
-```text
-torch 2.7.1+cu128
-pyg-lib 0.5.0+pt27cu128
-relbench 3.0.1
-torch-geometric 2.8.0.post1
-pytorch-frame 0.3.0
-```
-
-安装命令：
+当前使用 Python 3.12、torch 2.7.1+cu128、pyg-lib 0.5.0+pt27cu128、RelBench 3.0.1、pandas 3.0.5。
 
 ```bash
-cd /workspace/relconnector
-
-uv pip install --python ../.venv/bin/python torch==2.7.1 \
-  --index-url https://download.pytorch.org/whl/cu128
-
-uv pip install --python ../.venv/bin/python pyg_lib \
-  -f https://data.pyg.org/whl/torch-2.7.0+cu128.html
-
-uv pip install --python ../.venv/bin/python -e '.[connectorx,training]'
+uv pip install --python ../.venv/bin/python -e '.[connectorx,training,dev]'
+# pyg-lib wheel 必须与 torch/CUDA 版本匹配。
 ```
 
-## 简单训练接口
+## 在线训练
 
 ```python
-from relconnector.pipeline import RelBenchModel, TrainingConfig
+from relconnector import OnlineRelBenchModel, OnlineTrainingConfig
 
-model = RelBenchModel(
+model = OnlineRelBenchModel(
     dataset="rel-f1",
     task="driver-dnf",
-    model="graphsage",
-    reader="pandas",
-    config=TrainingConfig(epochs=1),
+    config=OnlineTrainingConfig(
+        epochs=2,
+        batch_size=16,
+        num_neighbors=(4, 4),
+        channels=16,
+        device="cpu",
+        torch_num_threads=1,
+        executor="sync",
+        feature_cache_bytes=16 * 1024**2,
+    ),
 )
 result = model.train()
-print(result.telemetry)
 ```
 
-默认使用 `GloveTextEmbedder`。entity prediction 和 recommendation task 均支持。
+文本使用本地缓存的 sentence-transformers/average_word_embeddings_glove.6B.300d。在线训练不会下载模型；可通过 text_model_path 指向已下载目录。训练期间不下载 RelBench 数据或 task manifest。
 
-## Baseline benchmark
+## 实验入口
 
-正式 baseline 使用 pandas 全量读库、无图物化缓存、GloVe 文本编码、
-pyg-lib 采样和 PyG 训练。每个 task 在独立子进程运行，避免 RSS、CUDA allocator
-和 Python 对象跨任务污染：
+所有命令在项目根目录运行。先用 data/ 准备数据库，再运行 benchmark：
 
 ```bash
-../.venv/bin/python -m relconnector.pipeline.benchmark \
-  --reader pandas \
-  --epochs 1 \
-  --output benchmarks/baseline-all.jsonl
+../.venv/bin/python -m benchmark.runner --dataset rel-f1 --task driver-dnf \
+  --epochs 1 --max-batches 2 --device cpu --output benchmarks/baseline-smoke.jsonl
+../.venv/bin/python -m benchmark.online_runner --dataset rel-f1 --task driver-dnf \
+  --epochs 1 --max-batches 2 --device cpu --output benchmarks/online-smoke.jsonl
+../.venv/bin/python -m benchmark.compare \
+  benchmarks/baseline-smoke.jsonl benchmarks/online-smoke.jsonl
 ```
 
-快速验证：
+比较工具并排列出耗时和 RSS，同时检查 reader、executor、特征 schema fingerprint、TensorFrame/HeteroEncoder、采样策略、数据版本、训练工作量和 loss。baseline 与 online 现在共享这些训练语义；严格配置下实体与推荐任务的配对 smoke 得到了完全相同的 loss。历史 hash/Linear 编码结果不能与当前结果混用。
+
+## 验证
 
 ```bash
-../.venv/bin/python -m relconnector.pipeline.benchmark \
-  --dataset rel-f1 \
-  --epochs 1 \
-  --max-batches 1 \
-  --batch-size 16 \
-  --num-neighbors 4,4 \
-  --channels 16 \
-  --device cpu \
-  --no-text \
-  --output benchmarks/rel-f1-smoke.jsonl
-```
-
-长任务中断后可复用同一输出文件继续执行；成功任务会被跳过，失败任务会重跑：
-
-```bash
-../.venv/bin/python -m relconnector.pipeline.benchmark \
-  --reader pandas \
-  --epochs 1 \
-  --output benchmarks/baseline-all.jsonl \
-  --resume
-```
-
-每条 JSONL 对应一个 task，记录：
-
-- 阶段耗时：`database_open`、`task_read`、`database_read`、
-  `text_encoder_init`、`graph_build`、`loader_build`、`model_build`、
-  `train_epoch_N`。
-- batch 操作耗时：`sampling`、`h2d`、`forward`、`backward`、
-  `optimizer_step`，包含 count、total、mean、p50、p95、p99 和吞吐。
-- 资源：进程 RSS、系统已用内存、CUDA allocated/reserved 的 before、after 和
-  peak。总体 CUDA peak 使用 PyTorch allocator 的 peak counter。
-- 环境、训练配置、loss、batch 数和样本数。
-
-## 测试
-
-```bash
+../.venv/bin/ruff check .
+../.venv/bin/ruff format --check .
+../.venv/bin/pyright
 ../.venv/bin/python -m unittest discover -s data/tests -v
 ../.venv/bin/python -m unittest discover -s tests -v
-../.venv/bin/python -m compileall -q data relconnector tests
-../.venv/bin/pyright
 ```
+
+已完成 F1 实体与推荐任务的两轮短程 CPU 训练。未重跑全 64 任务完整 epoch，未验证 CUDA 吞吐和显存；当前沙箱的进程退出可能报告 /proc/.../comm 权限限制，需与测试断言及 worker 结果分别判断。

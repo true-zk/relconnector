@@ -1,5 +1,5 @@
 {
-  "include": ["data", "relconnector", "tests"],
+  "include": ["baseline", "benchmark", "data", "relconnector", "tests"],
   "venvPath": "..",
   "venv": ".venv",
   "pythonVersion": "3.12",
