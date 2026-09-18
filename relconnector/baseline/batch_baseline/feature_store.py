@@ -10,13 +10,13 @@ import torch_frame
 from relbench.base import Database
 from torch_frame import TensorFrame
 
-from relconnector.features import (
+from baseline.vanilla_baseline.features import (
     EntityFeatureBatch,
     FetchedSubgraph,
     RecommendationFeatureBatch,
     TensorFrameEncoder,
 )
-from relconnector.sampling import (
+from baseline.vanilla_baseline.sampling import (
     EntitySamplePlan,
     RecommendationSamplePlan,
     SampledSubgraph,

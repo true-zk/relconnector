@@ -15,7 +15,10 @@ from torch_frame import stype
 from torch_geometric.data import HeteroData
 from torch_geometric.utils import sort_edge_index
 
-from relconnector.features import TensorFrameEncoder, TensorFrameFeatureSchema
+from baseline.vanilla_baseline.features import (
+    TensorFrameEncoder,
+    TensorFrameFeatureSchema,
+)
 
 from .text_embedder import GloveTextEmbedder
 from .types import ColStats

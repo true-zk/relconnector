@@ -9,8 +9,9 @@ import numpy as np
 import pandas as pd
 from relbench.base import Database, Table, TaskType
 
-from relconnector.connector import BaseDatabaseReader, create_reader
-from relconnector.connector.catalog import TaskMetadata
+from baseline.vanilla_baseline.connector import BaseDatabaseReader, create_reader
+from baseline.vanilla_baseline.connector.catalog import TaskMetadata
+from relbench_compat.tasks import hidden_columns as task_hidden_columns
 
 
 @dataclass
@@ -132,7 +133,7 @@ def _validate_and_correct_database(database: Database) -> Database:
 
 def default_sqlite_path(dataset_name: str, root: Path | None = None) -> Path:
     if root is None:
-        root = Path(__file__).resolve().parents[1] / "data" / "relbench"
+        root = Path(__file__).resolve().parents[2] / "data" / "relbench"
     return root / f"{dataset_name}.sqlite"
 
 
@@ -162,7 +163,14 @@ def open_dataset(
 
 def _build_task(metadata: TaskMetadata, splits: dict[str, pd.DataFrame]) -> LocalTask:
     task_type = TaskType(_required(metadata.task_type, "task_type"))
-    hidden_columns = _parse_hidden_columns(metadata.extra.get("hidden_columns"))
+    hidden_columns = list(
+        task_hidden_columns(
+            metadata.extra,
+            name=metadata.name,
+            entity_table=metadata.entity_table,
+            target_column=metadata.target_column,
+        )
+    )
     time_col = _optional_string(metadata.time_column)
     kind = _optional_string(metadata.extra.get("kind"))
     if task_type == TaskType.RECOMMENDATION:
@@ -221,17 +229,3 @@ def _optional_int(value: object) -> int | None:
             f"Expected an integer-compatible value, got {type(value).__name__}"
         )
     return int(value)
-
-
-def _parse_hidden_columns(value: object) -> list[tuple[str, str]]:
-    if value is None:
-        return []
-    if not isinstance(value, list):
-        raise TypeError("hidden_columns must be a list of [table, column] pairs")
-
-    result: list[tuple[str, str]] = []
-    for pair in value:
-        if not isinstance(pair, (list, tuple)) or len(pair) != 2:
-            raise TypeError("hidden_columns must contain [table, column] pairs")
-        result.append((str(pair[0]), str(pair[1])))
-    return result
