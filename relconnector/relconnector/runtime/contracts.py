@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-from dataclasses import dataclass
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass, field
 from typing import Protocol
 
 from relconnector.features import BatchAssembler, FeatureFetcher, PreparedBatch
@@ -36,6 +36,7 @@ class RuntimeComponents:
     fetcher: FeatureFetcher
     assembler: BatchAssembler
     trainer: Trainer
+    assembler_factory: Callable[[], BatchAssembler] | None = None
 
 
 @dataclass(frozen=True)
@@ -43,3 +44,4 @@ class RuntimeResult:
     steps: int
     examples: int
     mean_loss: float
+    pipeline: dict[str, object] = field(default_factory=dict)

@@ -21,9 +21,16 @@ FeatureFrame: TypeAlias = pd.DataFrame | TensorFrame
 
 
 @dataclass(frozen=True)
+class FetchedNodeFeatures:
+    frame: FeatureFrame
+    inverse: torch.Tensor
+    unique_ids: torch.Tensor | None = None
+
+
+@dataclass(frozen=True)
 class FetchedSubgraph:
     sample: SampledSubgraph
-    frames: dict[str, FeatureFrame]
+    frames: dict[str, FetchedNodeFeatures]
 
 
 @dataclass(frozen=True)
@@ -55,6 +62,10 @@ class PreparedBatch:
 class FeatureFetcher(Protocol):
     def fetch(self, plan: SamplePlan) -> FeatureBatch: ...
 
+    def fetch_many(self, plans: list[SamplePlan]) -> list[FeatureBatch]: ...
+
 
 class BatchAssembler(Protocol):
     def assemble(self, features: FeatureBatch) -> PreparedBatch: ...
+
+    def assemble_many(self, features: list[FeatureBatch]) -> list[PreparedBatch]: ...

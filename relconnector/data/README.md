@@ -90,3 +90,54 @@ export HF_TOKEN=YOUR_HUGGING_FACE_TOKEN
 ```bash
 ../.venv/bin/python -m data.update_catalog_metadata
 ```
+
+## 显式 node ID 契约
+
+新写入的无自然主键 data table 会自动增加
+`__relconnector_node_id__ INTEGER PRIMARY KEY`，值严格为 `0..N-1`。已有数据库先做只读检查：
+
+```bash
+../.venv/bin/python -m data.initialize_node_ids
+```
+
+确认报告后再迁移。迁移会事务性重建无主键表，因此需要接近目标表大小的临时空间：
+
+```bash
+../.venv/bin/python -m data.initialize_node_ids --apply --vacuum
+```
+
+也可以显式传入一个或多个 SQLite 路径。工具会拒绝 rowid 有缺口的表，避免改变旧采样器使用的逻辑 node ID。
+
+为保留旧实现的严格对照，可先复制数据库再迁移：
+
+```bash
+mkdir -p data/relbench-explicit-node-id
+cp --reflink=auto data/relbench/*.sqlite data/relbench-explicit-node-id/
+../.venv/bin/python -m data.initialize_node_ids \
+  --database-dir data/relbench-explicit-node-id --apply --vacuum
+```
+
+## 官方 stype 初始化与目标列修复
+
+新下载流程会在 SQLite 写入后生成 `<dataset>.stypes.json`。现有数据库先刷新任务
+metadata，再生成 stype，顺序不能反过来（catalog 更新会让 artifact 过期）：
+
+```bash
+../.venv/bin/python -m data.update_catalog_metadata --database-dir data/relbench
+../.venv/bin/python -m data.initialize_stypes --database-dir data/relbench
+# 或单库
+../.venv/bin/python -m data.initialize_stypes --database data/relbench/rel-f1.sqlite
+```
+
+metadata 刷新只使用本地 Hugging Face manifest，不读取训练标签全表。修复 autocomplete
+隐含隐藏目标列，并对已证实的 Ratebeer external 目标列遗漏应用限定任务的勘误。
+不以列名/字符串内容更改 URL、邮箱、UPC 等 stype。
+
+stype 初始化固定 RandomState(42)、表名字典序、test_timestamp 截断后的数据库视图；
+按 pandas.sample 的无放回抽样方式选最多 1000 行，调用 PyTorch Frame 官方推断，
+并沿用 RelBench 的 embedding -> multicategorical 转换。仅读取这些节点的特征。
+为与 pandas 抽样一致，ID 排列临时内存是 O(N)，特征内存只与样本规模相关。
+
+artifact 记录样本 ID、依赖版本、数据库路径/大小/mtime、cutoff 和校验指纹；
+运行时必须匹配，缺失/过期/损坏时明确报错。迁移 node ID 后需重新生成 artifact。
+工具依赖 pytorch-frame（包含在项目 training 环境中），不生成完整 TensorFrame 或 embedding。

@@ -25,6 +25,7 @@ INTERNAL_TABLES = frozenset(
 
 TARGET_ROW_ID_COLUMN = "__target_row_id__"
 TARGET_SPLIT_COLUMN = "split"
+NODE_ID_COLUMN = "__relconnector_node_id__"
 
 
 @dataclass(frozen=True)

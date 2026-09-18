@@ -20,7 +20,7 @@ training = ["relbench[full]>=3.0,<4", "sentence-transformers>=5"]
 dev = ["pyright>=1.1.400", "ruff>=0.16"]
 
 [tool.setuptools.packages.find]
-include = ["relconnector", "relconnector.*", "baseline", "baseline.*", "benchmark", "benchmark.*"]
+include = ["relconnector", "relconnector.*", "baseline", "baseline.*", "benchmark", "benchmark.*", "relbench_compat", "relbench_compat.*", "data", "data.*"]
 namespaces = false
 
 [tool.ruff]

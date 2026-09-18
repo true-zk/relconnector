@@ -10,16 +10,16 @@ from unittest.mock import patch
 import pandas as pd
 from relbench.base import Database, Table, TaskType
 
-from baseline.dataset import (
+from baseline.batch_baseline.dataset import (
     LocalEntityTask,
     LocalRecommendationTask,
     _build_task,
     _validate_and_correct_database,
 )
-from baseline.text_embedder import _normalize_text
+from baseline.batch_baseline.text_embedder import _normalize_text
+from baseline.vanilla_baseline.connector.catalog import TaskMetadata
 from benchmark.runner import _prepare_output, discover_cases
 from benchmark.telemetry import TelemetryRecorder, timed
-from relconnector.connector.catalog import TaskMetadata
 
 
 class LocalTaskTest(unittest.TestCase):

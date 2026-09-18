@@ -10,6 +10,8 @@ from pathlib import Path
 import yaml
 from huggingface_hub.constants import HF_HUB_CACHE
 
+from relbench_compat.tasks import hidden_columns
+
 
 def find_task_manifest(dataset: str, task: str) -> Path:
     pattern = (
@@ -25,7 +27,7 @@ def find_task_manifest(dataset: str, task: str) -> Path:
 
 
 def manifest_extra(manifest: dict[str, object]) -> dict[str, object]:
-    return {
+    extra = {
         "kind": manifest.get("kind"),
         "dst_entity_table": manifest.get("dst_entity_table"),
         "dst_entity_column": manifest.get("dst_entity_col"),
@@ -34,6 +36,17 @@ def manifest_extra(manifest: dict[str, object]) -> dict[str, object]:
         "num_eval_timestamps": manifest.get("num_eval_timestamps"),
         "eval_k": manifest.get("eval_k"),
     }
+
+    extra["hidden_columns"] = [
+        list(pair)
+        for pair in hidden_columns(
+            extra,
+            name=str(manifest.get("name", "")),
+            entity_table=str(manifest.get("entity_table", "")),
+            target_column=str(manifest.get("target_col", "")),
+        )
+    ]
+    return extra
 
 
 def update_database(path: Path) -> int:

@@ -5,9 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TypedDict
 
+from relbench_compat import CORRECTNESS_VERSION
+
 
 class ExperimentMetadata(TypedDict):
     schema_version: int
+    correctness_version: str
     implementation: str
     reader: str
     device: str
@@ -37,7 +40,8 @@ def experiment_metadata(
 ) -> ExperimentMetadata:
     stat = database_path.stat()
     return {
-        "schema_version": 1,
+        "schema_version": 2,
+        "correctness_version": CORRECTNESS_VERSION,
         "implementation": implementation,
         "reader": reader,
         "device": device,

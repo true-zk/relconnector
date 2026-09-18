@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+from contextlib import AbstractContextManager
+from typing import cast
+
+import pandas as pd
 import torch
-from torch_frame import TensorFrame
+from torch_frame import TensorFrame, cat
 from torch_frame.data.multi_tensor import _MultiTensor
 from torch_geometric.data import HeteroData
 
+from .cache import EncodedFeatureCache
 from .contracts import (
     EntityFeatureBatch,
     FeatureBatch,
@@ -20,12 +25,34 @@ from .schema import TensorFrameEncoder
 class TensorFrameBatchAssembler:
     """Apply the same TensorFrame conversion used by the eager baseline."""
 
-    def __init__(self, encoder: TensorFrameEncoder) -> None:
+    def __init__(
+        self,
+        encoder: TensorFrameEncoder,
+        *,
+        encoded_cache_bytes: int = 0,
+        encoded_cache_admission: str = "second",
+        encoded_cache: EncodedFeatureCache | None = None,
+    ) -> None:
         self.encoder = encoder
+        self.encoded_cache = encoded_cache or EncodedFeatureCache(
+            encoded_cache_bytes,
+            admission=encoded_cache_admission,
+        )
 
     def assemble(self, features: FeatureBatch) -> PreparedBatch:
+        return self.assemble_many([features])[0]
+
+    def assemble_many(self, features: list[FeatureBatch]) -> list[PreparedBatch]:
+        encoded: dict[tuple[str, int], TensorFrame] = {}
+        return [self._assemble(item, encoded) for item in features]
+
+    def _assemble(
+        self, features: FeatureBatch, encoded: dict[tuple[str, int], TensorFrame]
+    ) -> PreparedBatch:
         if isinstance(features, EntityFeatureBatch):
-            data = self._assemble_subgraph(features.subgraph)
+            data = self._assemble_subgraph(
+                features.subgraph, encoded, features.key.epoch
+            )
             data[features.subgraph.sample.seed_node_type].y = features.target
             return PreparedBatch(
                 key=features.key,
@@ -34,9 +61,9 @@ class TensorFrameBatchAssembler:
             )
         if isinstance(features, RecommendationFeatureBatch):
             batches = (
-                self._assemble_subgraph(features.source),
-                self._assemble_subgraph(features.positive),
-                self._assemble_subgraph(features.negative),
+                self._assemble_subgraph(features.source, encoded, features.key.epoch),
+                self._assemble_subgraph(features.positive, encoded, features.key.epoch),
+                self._assemble_subgraph(features.negative, encoded, features.key.epoch),
             )
             return PreparedBatch(
                 key=features.key,
@@ -45,16 +72,31 @@ class TensorFrameBatchAssembler:
             )
         raise TypeError(f"Unsupported feature batch: {type(features).__name__}")
 
-    def _assemble_subgraph(self, fetched: FetchedSubgraph) -> HeteroData:
+    def _assemble_subgraph(
+        self,
+        fetched: FetchedSubgraph,
+        encoded: dict[tuple[str, int], TensorFrame],
+        epoch: int,
+    ) -> HeteroData:
         sample = fetched.sample
         data = HeteroData()
         for node_type, node_ids in sample.node_ids.items():
-            frame = fetched.frames[node_type]
-            data[node_type].tf = (
-                frame
-                if isinstance(frame, TensorFrame)
-                else self.encoder.encode(node_type, frame)
-            )
+            features = fetched.frames[node_type]
+            frame = features.frame
+            cache_key = (node_type, id(frame))
+            tensor_frame = encoded.get(cache_key)
+            if tensor_frame is None:
+                if isinstance(frame, TensorFrame):
+                    tensor_frame = frame
+                elif features.unique_ids is None:
+                    tensor_frame = self._encode_frame(node_type, frame, epoch)
+                else:
+                    tensor_frame = self._encode_cached(
+                        node_type, features.unique_ids, frame, epoch
+                    )
+                encoded[cache_key] = tensor_frame
+            with self.encoder.metrics.timer("frame_gather", table=node_type):
+                data[node_type].tf = tensor_frame[features.inverse]
             data[node_type].n_id = node_ids
             data[node_type].num_nodes = len(node_ids)
             sampled_nodes = sample.num_sampled_nodes.get(node_type)
@@ -76,6 +118,52 @@ class TensorFrameBatchAssembler:
         if sample.seed_time is not None:
             seed_store.seed_time = sample.seed_time
         return data
+
+    def _encode_cached(
+        self,
+        table: str,
+        node_ids: torch.Tensor,
+        frame: pd.DataFrame,
+        epoch: int,
+    ) -> TensorFrame:
+        groups, misses = self.encoded_cache.lookup_many(table, node_ids, epoch=epoch)
+        self.encoder.metrics.add(
+            "encoded_cache_hits",
+            len(node_ids) - len(misses),
+            table=table,
+        )
+        self.encoder.metrics.add("encoded_cache_misses", len(misses), table=table)
+        if not groups:
+            encoded = self._encode_frame(table, frame, epoch)
+            self.encoded_cache.put(table, node_ids, encoded, epoch=epoch)
+            return encoded
+
+        pieces: list[TensorFrame] = []
+        positions: list[int] = []
+        for entry, locations in groups:
+            positions.extend(position for position, _ in locations)
+            rows = torch.tensor([row for _, row in locations], dtype=torch.long)
+            pieces.append(entry.frame[rows])
+        if misses:
+            missing_frame = frame.iloc[misses].reset_index(drop=True)
+            missing = self._encode_frame(table, missing_frame, epoch)
+            pieces.append(missing)
+            positions.extend(misses)
+            miss_index = torch.tensor(misses, dtype=torch.long)
+            self.encoded_cache.put(table, node_ids[miss_index], missing, epoch=epoch)
+        combined = pieces[0] if len(pieces) == 1 else cat(pieces, dim=0)
+        if positions == list(range(len(positions))):
+            return combined
+        restore = torch.argsort(torch.tensor(positions, dtype=torch.long))
+        return combined[restore]
+
+    def _encode_frame(self, table: str, frame: pd.DataFrame, epoch: int) -> TensorFrame:
+        text_embedder = getattr(self.encoder, "text_embedder", None)
+        context = getattr(text_embedder, "epoch_context", None)
+        if not callable(context):
+            return self.encoder.encode(table, frame)
+        with cast(AbstractContextManager[None], context(epoch)):
+            return self.encoder.encode(table, frame)
 
 
 def _tensor_bytes(data: HeteroData) -> int:

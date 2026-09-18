@@ -13,6 +13,8 @@ import numpy as np
 import pandas as pd
 from relbench.base import Database, Table, TaskType
 
+from relbench_compat.tasks import hidden_columns as task_hidden_columns
+
 from .contracts import (
     RelBenchDataset,
     RelBenchEntityTask,
@@ -250,7 +252,15 @@ def _task_table(
             "kind": task.kind,
             "dst_entity_table": dst_entity_table,
             "dst_entity_column": dst_entity_column,
-            "hidden_columns": _hidden_columns(task),
+            "hidden_columns": [
+                list(pair)
+                for pair in task_hidden_columns(
+                    {"kind": task.kind, "hidden_columns": _hidden_columns(task)},
+                    name=task_name,
+                    entity_table=entity_table,
+                    target_column=target_column,
+                )
+            ],
             "timedelta": str(task.timedelta),
             "num_eval_timestamps": task.num_eval_timestamps,
             "eval_k": eval_k,

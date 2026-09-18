@@ -7,31 +7,34 @@ from pathlib import Path
 
 import torch
 
-from baseline.config import TrainingConfig
-from baseline.dataset import default_sqlite_path, open_dataset
-from baseline.feature_store import EagerFeatureStore, InMemoryTensorFrameFetcher
-from baseline.objectives import resolve_output
-from baseline.text_embedder import GloveTextEmbedder
-from relconnector.features import (
+from baseline.batch_baseline.config import TrainingConfig
+from baseline.batch_baseline.dataset import default_sqlite_path, open_dataset
+from baseline.batch_baseline.feature_store import (
+    EagerFeatureStore,
+    InMemoryTensorFrameFetcher,
+)
+from baseline.batch_baseline.objectives import resolve_output
+from baseline.batch_baseline.text_embedder import GloveTextEmbedder
+from baseline.vanilla_baseline.features import (
     SqlTensorFrameSchemaBuilder,
     TensorFrameBatchAssembler,
     TensorFrameEncoder,
 )
-from relconnector.graph import InMemoryGraphIndexBuilder
-from relconnector.runtime import (
+from baseline.vanilla_baseline.graph import InMemoryGraphIndexBuilder
+from baseline.vanilla_baseline.runtime import (
     AsyncPipelineExecutor,
     AsyncRuntimeConfig,
     RuntimeComponents,
     SyncExecutor,
 )
-from relconnector.sampling import PygLibNeighborSampler
-from relconnector.task import SqlSeedReader, TaskSpec
-from relconnector.training import OnlineTrainer
+from baseline.vanilla_baseline.sampling import PygLibNeighborSampler
+from baseline.vanilla_baseline.task import SqlSeedReader, TaskSpec
+from baseline.vanilla_baseline.training import OnlineTrainer
 
 from .metadata import experiment_metadata
 from .result import TrainingRunResult, add_training_config
 from .telemetry import TelemetryRecorder
-from .wrappers import (
+from .vanilla_wrappers import (
     MeasuredBatchAssembler,
     MeasuredFeatureFetcher,
     MeasuredSampler,
@@ -103,6 +106,7 @@ class BaselineExperiment:
                     hidden_columns=task_object.hidden_columns(),
                     encode_text=self.text_embedder_name == "glove",
                     cutoff=local.test_timestamp,
+                    require_stypes=True,
                 ).build()
             with recorder.phase("database_read"):
                 database = local.get_db()

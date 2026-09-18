@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal, TypeAlias, TypedDict, cast
 
-from baseline.config import TrainingConfig
+from baseline.batch_baseline.config import TrainingConfig
 
 from .cases import DEFAULT_DATABASE_DIR, discover_cases
 from .cases import prepare_output as _prepare_output

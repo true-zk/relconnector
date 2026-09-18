@@ -8,7 +8,8 @@ import math
 from collections import Counter
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import cast
+from pathlib import Path
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -21,9 +22,12 @@ from torch_frame.data.multi_embedding_tensor import MultiEmbeddingTensor
 from torch_frame.data.stats import StatType
 from torch_frame.utils import infer_df_stype
 
+from relbench_compat.proposal import load_proposal
+from relconnector.artifacts import artifact_key, load_json, save_json
 from relconnector.connector import BaseDatabaseReader, ColumnSchema, TableSchema
-from relconnector.connector.base import quote_identifier
+from relconnector.connector.base import quote_identifier, sqlite_path
 from relconnector.connector.decoding import decode_frame
+from relconnector.observability import OperationMetrics
 
 from .text import TextEmbedder, normalize_text
 
@@ -74,7 +78,9 @@ class SqlTensorFrameSchemaBuilder:
         inference_rows: int = 1_000,
         text_embedding_dim: int = 300,
         encode_text: bool = True,
+        require_stypes: bool = False,
         cutoff: pd.Timestamp | None = None,
+        cache_dir: str | Path | None = None,
     ) -> None:
         if min(scan_batch_size, inference_rows, text_embedding_dim) <= 0:
             raise ValueError("schema preparation sizes must be positive")
@@ -85,8 +91,32 @@ class SqlTensorFrameSchemaBuilder:
         self.text_embedding_dim = text_embedding_dim
         self.encode_text = encode_text
         self.cutoff = cutoff
+        self.require_stypes = require_stypes
+        self.cache_dir = Path(cache_dir) if cache_dir is not None else None
+        self.cache_hit = False
+        self._proposal: dict[str, dict[str, str]] | None = None
 
     def build(self) -> TensorFrameFeatureSchema:
+        database = Path(sqlite_path(self.reader.url))
+        self._proposal = load_proposal(
+            database, self.cutoff, required=self.require_stypes
+        )
+        cache_key = self._cache_key(database)
+        cache_path = (
+            self.cache_dir / "schema" / f"{cache_key}.json"
+            if self.cache_dir is not None
+            else None
+        )
+        if cache_path is not None:
+            cached = load_json(cache_path, cache_key)
+            if isinstance(cached, dict):
+                try:
+                    schema = self._from_cache(cached)
+                except (KeyError, TypeError, ValueError):
+                    pass
+                else:
+                    self.cache_hit = True
+                    return schema
         tables: dict[str, TableFeatureSchema] = {}
         for schema in self.reader.schemas().values():
             if schema.kind != "data":
@@ -105,7 +135,61 @@ class SqlTensorFrameSchemaBuilder:
                     for column in columns
                 }
             tables[schema.name] = TableFeatureSchema(columns, inferred, stats)
-        return TensorFrameFeatureSchema(tables, _fingerprint(tables))
+        result = TensorFrameFeatureSchema(tables, _fingerprint(tables))
+        if cache_path is not None:
+            save_json(cache_path, cache_key, _schema_cache_payload(result))
+        return result
+
+    def _cache_key(self, database: Path) -> str:
+        stat = database.stat()
+        return artifact_key(
+            {
+                "algorithm": "sql-tensorframe-schema-v1",
+                "database": {
+                    "path": str(database.resolve()),
+                    "bytes": stat.st_size,
+                    "mtime_ns": stat.st_mtime_ns,
+                },
+                "cutoff": None if self.cutoff is None else str(self.cutoff),
+                "hidden_columns": sorted(list(item) for item in self.hidden_columns),
+                "scan_batch_size": self.scan_batch_size,
+                "inference_rows": self.inference_rows,
+                "text_embedding_dim": self.text_embedding_dim,
+                "encode_text": self.encode_text,
+                "proposal": self._proposal,
+            }
+        )
+
+    def _from_cache(self, payload: dict[str, object]) -> TensorFrameFeatureSchema:
+        cached_tables = cast(dict[str, dict[str, object]], payload["tables"])
+        tables: dict[str, TableFeatureSchema] = {}
+        live_tables = {
+            schema.name: schema
+            for schema in self.reader.schemas().values()
+            if schema.kind == "data"
+        }
+        if set(cached_tables) != set(live_tables):
+            raise ValueError("schema cache table set does not match database")
+        for table, schema in live_tables.items():
+            cached = cached_tables[table]
+            col_to_stype = {
+                column: stype(value)
+                for column, value in cast(dict[str, str], cached["stypes"]).items()
+            }
+            candidates = self._candidate_columns(schema)
+            columns = tuple(
+                column for column in candidates if column.name in col_to_stype
+            )
+            raw_stats = cast(dict[str, dict[str, object]], cached["stats"])
+            stats = {
+                column: {StatType(kind): value for kind, value in values.items()}
+                for column, values in raw_stats.items()
+            }
+            tables[table] = TableFeatureSchema(columns, col_to_stype, stats)
+        result = TensorFrameFeatureSchema(tables, str(payload["fingerprint"]))
+        if _fingerprint(tables) != result.fingerprint:
+            raise ValueError("schema cache fingerprint mismatch")
+        return result
 
     def _candidate_columns(self, schema: TableSchema) -> tuple[ColumnSchema, ...]:
         excluded = {foreign_key.column for foreign_key in schema.foreign_keys}
@@ -123,11 +207,24 @@ class SqlTensorFrameSchemaBuilder:
     ) -> dict[str, stype]:
         if not columns:
             return {}
+        if self._proposal is not None:
+            if schema.name not in self._proposal:
+                raise ValueError(f"Missing table in stype artifact: {schema.name}")
+            return {
+                column.name: (
+                    stype.categorical
+                    if not self.encode_text
+                    and self._proposal[schema.name][column.name] == "text_embedded"
+                    else stype(self._proposal[schema.name][column.name])
+                )
+                for column in columns
+                if column.name in self._proposal[schema.name]
+            }
         projection = ", ".join(quote_identifier(column.name) for column in columns)
         node_id = (
             quote_identifier(schema.primary_key)
             if schema.primary_key is not None
-            else "rowid - 1"
+            else "rowid"
         )
         where_clause = self._time_filter(schema)
         raw = self.reader.read_query(
@@ -349,10 +446,13 @@ class TensorFrameEncoder:
         text_embedder: TextEmbedder | None,
         *,
         text_batch_size: int,
+        metrics: OperationMetrics | None = None,
     ) -> None:
         if text_batch_size <= 0:
             raise ValueError("text_batch_size must be positive")
         self.schema = schema
+        self.text_embedder = text_embedder
+        self.metrics = metrics or OperationMetrics(False)
         has_text = any(
             kind == stype.text_embedded
             for spec in schema.tables.values()
@@ -366,7 +466,9 @@ class TensorFrameEncoder:
             else TextEmbedderConfig(text_embedder, text_batch_size)
         )
         self._converters = {
-            table: DataFrameToTensorFrameConverter(
+            table: _TimedConverter(
+                table=table,
+                metrics=self.metrics,
                 col_to_stype=dict(spec.col_to_stype),
                 col_stats={
                     column: dict(stats) for column, stats in spec.col_stats.items()
@@ -395,9 +497,12 @@ class TensorFrameEncoder:
 
     def encode(self, table: str, frame: pd.DataFrame) -> TensorFrame:
         spec = self.schema.tables[table]
-        prepared = _prepare_frame(frame, spec)
+        with self.metrics.timer("frame_prepare", table=table):
+            prepared = _prepare_frame(frame, spec)
+        self.metrics.add("encode_rows", len(prepared), table=table)
         if len(prepared) > 0:
-            return self._converters[table](prepared)
+            with self.metrics.timer("frame_convert", table=table):
+                return self._converters[table](prepared)
         if table not in self._empty:
             empty = self._converters[table](_sentinel_frame(spec))[:0]
             embedding = empty.feat_dict.get(stype.embedding)
@@ -413,6 +518,57 @@ class TensorFrameEncoder:
                 )
             self._empty[table] = empty
         return self._empty[table]
+
+
+class _TimedMapper:
+    def __init__(
+        self,
+        inner: object,
+        metrics: OperationMetrics,
+        table: str,
+        column: str,
+        semantic_type: stype,
+    ) -> None:
+        self.inner = inner
+        self.metrics = metrics
+        self.table = table
+        self.column = column
+        self.semantic_type = semantic_type
+
+    def forward(self, values: pd.Series, **kwargs: Any) -> object:
+        self.metrics.add(
+            "column_rows", len(values), table=self.table, column=self.column
+        )
+        operation = f"map_{self.semantic_type.value}"
+        with self.metrics.timer(operation, table=self.table, column=self.column):
+            return self.inner.forward(values, **kwargs)  # type: ignore[attr-defined]
+
+
+class _TimedConverter(DataFrameToTensorFrameConverter):
+    def __init__(
+        self,
+        *,
+        table: str,
+        metrics: OperationMetrics,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(**kwargs)
+        self._table = table
+        self._metrics = metrics
+        self._mapper_cache: dict[str, _TimedMapper] = {}
+
+    def _get_mapper(self, col: str) -> Any:
+        mapper = self._mapper_cache.get(col)
+        if mapper is None:
+            mapper = _TimedMapper(
+                super()._get_mapper(col),
+                self._metrics,
+                self._table,
+                col,
+                self.col_to_stype[col],
+            )
+            self._mapper_cache[col] = mapper
+        return mapper
 
 
 def _prepare_frame(frame: pd.DataFrame, spec: TableFeatureSchema) -> pd.DataFrame:
@@ -517,6 +673,24 @@ def _fingerprint(tables: Mapping[str, TableFeatureSchema]) -> str:
         payload, ensure_ascii=True, separators=(",", ":"), sort_keys=True
     ).encode()
     return hashlib.sha256(encoded).hexdigest()
+
+
+def _schema_cache_payload(schema: TensorFrameFeatureSchema) -> dict[str, object]:
+    return {
+        "fingerprint": schema.fingerprint,
+        "tables": {
+            table: {
+                "stypes": {
+                    column: kind.value for column, kind in spec.col_to_stype.items()
+                },
+                "stats": {
+                    column: {kind.value: value for kind, value in stats.items()}
+                    for column, stats in spec.col_stats.items()
+                },
+            }
+            for table, spec in schema.tables.items()
+        },
+    }
 
 
 def _is_null(value: object) -> bool:

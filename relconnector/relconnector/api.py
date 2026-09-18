@@ -10,6 +10,7 @@ import pandas as pd
 import torch
 from relbench.base import TaskType
 
+from .artifacts import CachedGraphIndexBuilder
 from .config import OnlineTrainingConfig
 from .connector import BaseDatabaseReader, create_reader
 from .connector.base import quote_identifier
@@ -22,6 +23,7 @@ from .features import (
 )
 from .features.text import GloveTextEmbedder
 from .graph import GraphIndex, InMemoryGraphIndexBuilder
+from .observability import OperationMetrics
 from .runtime import (
     AsyncPipelineExecutor,
     AsyncRuntimeConfig,
@@ -40,6 +42,8 @@ class OnlineTrainingSession:
     task: TaskSpec
     feature_schema: TensorFrameFeatureSchema
     components: RuntimeComponents
+    metrics: OperationMetrics
+    initialization_cache: dict[str, bool]
 
 
 class OnlineRelBenchModel:
@@ -72,17 +76,35 @@ class OnlineRelBenchModel:
         reader = create_reader(self.reader_kind, path)
         reader.validate_catalog()
         task = TaskSpec.from_metadata(reader.task_metadata()[self.task_name])
-        feature_schema = SqlTensorFrameSchemaBuilder(
+        cutoff = _cutoff(reader)
+        cache_dir = (
+            Path(self.config.cache_dir)
+            if self.config.cache_dir is not None
+            else self.sqlite_dir / ".relconnector-cache"
+        )
+        effective_cache_dir = cache_dir if self.config.initialization_cache else None
+        metrics = OperationMetrics(self.config.operation_telemetry)
+        schema_builder = SqlTensorFrameSchemaBuilder(
             reader,
             hidden_columns=task.hidden_columns,
             scan_batch_size=self.config.graph_scan_batch_size,
             text_embedding_dim=GloveTextEmbedder.embedding_dim,
-            cutoff=_cutoff(reader),
-        ).build()
-        graph = InMemoryGraphIndexBuilder(
-            reader,
-            scan_batch_size=self.config.graph_scan_batch_size,
-        ).build(cutoff=_cutoff(reader))
+            cutoff=cutoff,
+            require_stypes=True,
+            cache_dir=effective_cache_dir,
+        )
+        feature_schema = schema_builder.build()
+        if effective_cache_dir is None:
+            graph_builder = InMemoryGraphIndexBuilder(
+                reader, scan_batch_size=self.config.graph_scan_batch_size
+            )
+        else:
+            graph_builder = CachedGraphIndexBuilder(
+                reader,
+                scan_batch_size=self.config.graph_scan_batch_size,
+                cache_dir=effective_cache_dir,
+            )
+        graph = graph_builder.build(cutoff=cutoff)
         seeds = SqlSeedReader(
             reader,
             task,
@@ -103,13 +125,39 @@ class OnlineRelBenchModel:
             block_size=self.config.feature_block_size,
             cache_bytes=self.config.feature_cache_bytes,
             database_version=_database_version(path),
+            metrics=metrics,
+        )
+        text_embedder = GloveTextEmbedder(
+            model_path=self.config.text_model_path,
+            cache_bytes=self.config.text_embedding_cache_bytes,
+            cache_admission=self.config.text_cache_admission,
+            execution=self.config.text_execution,
+            metrics=metrics,
         )
         encoder = TensorFrameEncoder(
             feature_schema,
-            GloveTextEmbedder(model_path=self.config.text_model_path),
+            text_embedder,
             text_batch_size=self.config.text_batch_size,
+            metrics=metrics,
         )
-        assembler = TensorFrameBatchAssembler(encoder)
+        assembler = TensorFrameBatchAssembler(
+            encoder,
+            encoded_cache_bytes=self.config.encoded_feature_cache_bytes,
+            encoded_cache_admission=self.config.encoded_cache_admission,
+        )
+
+        def assembler_factory() -> TensorFrameBatchAssembler:
+            worker_encoder = TensorFrameEncoder(
+                feature_schema,
+                text_embedder,
+                text_batch_size=self.config.text_batch_size,
+                metrics=metrics,
+            )
+            return TensorFrameBatchAssembler(
+                worker_encoder,
+                encoded_cache=assembler.encoded_cache,
+            )
+
         torch.manual_seed(self.config.seed)
         if (
             self.config.device is not None
@@ -139,7 +187,13 @@ class OnlineRelBenchModel:
                 fetcher=fetcher,
                 assembler=assembler,
                 trainer=trainer,
+                assembler_factory=assembler_factory,
             ),
+            metrics=metrics,
+            initialization_cache={
+                "schema": schema_builder.cache_hit,
+                "topology": bool(getattr(graph_builder, "cache_hit", False)),
+            },
         )
         return self.session
 
@@ -153,6 +207,12 @@ class OnlineRelBenchModel:
                     seed_queue_bytes=self.config.seed_queue_bytes,
                     plan_queue_bytes=self.config.plan_queue_bytes,
                     ready_queue_bytes=self.config.ready_queue_bytes,
+                    feature_window_batches=self.config.feature_window_batches,
+                    feature_window_max_batches=self.config.feature_window_max_batches,
+                    feature_window_bytes=self.config.feature_window_bytes,
+                    encode_workers=self.config.encode_workers,
+                    fetched_queue_bytes=self.config.fetched_queue_bytes,
+                    feature_policy=self.config.feature_policy,
                 )
             )
         return executor.run(session.components, epochs=self.config.epochs)

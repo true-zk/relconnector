@@ -9,7 +9,7 @@ import unittest
 from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 from unittest.mock import patch
 
 import pandas as pd
@@ -19,8 +19,10 @@ from relbench.base import Database, Table, TaskType
 from test_online import _Sampler, _SeedSource, _Trainer
 from torch_geometric.data import HeteroData
 
-from baseline.feature_store import EagerFeatureStore, InMemoryTensorFrameFetcher
-from baseline.models.graphsage import GraphSAGEModel
+from baseline.batch_baseline.feature_store import (
+    EagerFeatureStore,
+)
+from baseline.batch_baseline.models.graphsage import GraphSAGEModel
 from benchmark.process import run_measured_process
 from benchmark.telemetry import TelemetryRecorder
 from relconnector.connector import (
@@ -32,6 +34,8 @@ from relconnector.connector import (
 )
 from relconnector.features import (
     EntityFeatureBatch,
+    FetchedNodeFeatures,
+    FetchedSubgraph,
     SqlFeatureFetcher,
     SqlTensorFrameSchemaBuilder,
     TensorFrameBatchAssembler,
@@ -108,6 +112,36 @@ class OnlineRegressionTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.directory.cleanup()
 
+    def test_schema_statistics_cache_round_trip(self) -> None:
+        cache_dir = Path(self.directory.name) / "cache"
+        cold = SqlTensorFrameSchemaBuilder(
+            self.reader,
+            text_embedding_dim=3,
+            cache_dir=cache_dir,
+        )
+        expected = cold.build()
+        warm = SqlTensorFrameSchemaBuilder(
+            self.reader,
+            text_embedding_dim=3,
+            cache_dir=cache_dir,
+        )
+        actual = warm.build()
+
+        self.assertFalse(cold.cache_hit)
+        self.assertTrue(warm.cache_hit)
+        self.assertEqual(expected.fingerprint, actual.fingerprint)
+        self.assertEqual(expected.col_names_dict, actual.col_names_dict)
+
+        artifact = next((cache_dir / "schema").iterdir())
+        artifact.write_text("{}")
+        recovered = SqlTensorFrameSchemaBuilder(
+            self.reader,
+            text_embedding_dim=3,
+            cache_dir=cache_dir,
+        )
+        self.assertEqual(recovered.build().fingerprint, expected.fingerprint)
+        self.assertFalse(recovered.cache_hit)
+
     def test_temporal_csc_and_rng_isolation(self) -> None:
         graph = InMemoryGraphIndexBuilder(self.reader, scan_batch_size=1).build()
         self.assertEqual(
@@ -153,9 +187,11 @@ class OnlineRegressionTest(unittest.TestCase):
         fetcher = SqlFeatureFetcher(self.reader, feature_columns=schema.feature_columns)
         features = fetcher.fetch(plan)
         assert isinstance(features, EntityFeatureBatch)
-        frame = features.subgraph.frames["events"]
+        node_features = features.subgraph.frames["events"]
+        frame = node_features.frame
         assert isinstance(frame, pd.DataFrame)
-        self.assertEqual(frame["value"].tolist(), [1.0, 2.0, 1.0])
+        restored = frame.iloc[node_features.inverse.tolist()].reset_index(drop=True)
+        self.assertEqual(restored["value"].tolist(), [1.0, 2.0, 1.0])
         self.assertNotIn("text", frame)
         self.assertEqual(fetcher.last_stats.queried_rows, 2)
         encoder = _TextEncoder()
@@ -253,7 +289,7 @@ class OnlineRegressionTest(unittest.TestCase):
                 ),
             }
         )
-        store = EagerFeatureStore.materialize(database, encoder)
+        store = EagerFeatureStore.materialize(database, cast(Any, encoder))
         graph = InMemoryGraphIndexBuilder(self.reader).build()
         seeds = EntitySeedBatch(
             BatchKey(0, 0), "events", torch.tensor([2, 0, 2]), None, torch.ones(3)
@@ -265,7 +301,20 @@ class OnlineRegressionTest(unittest.TestCase):
         )
         online = TensorFrameBatchAssembler(encoder).assemble(online_fetcher.fetch(plan))
         eager = TensorFrameBatchAssembler(encoder).assemble(
-            InMemoryTensorFrameFetcher(store).fetch(plan)
+            EntityFeatureBatch(
+                plan.key,
+                FetchedSubgraph(
+                    plan.subgraph,
+                    {
+                        node_type: FetchedNodeFeatures(
+                            store.frames[node_type][node_ids],
+                            torch.arange(len(node_ids)),
+                        )
+                        for node_type, node_ids in plan.subgraph.node_ids.items()
+                    },
+                ),
+                plan.target,
+            )
         )
         assert isinstance(online.data, HeteroData)
         assert isinstance(eager.data, HeteroData)
@@ -315,7 +364,7 @@ class OnlineRegressionTest(unittest.TestCase):
                 ),
             }
         )
-        store = EagerFeatureStore.materialize(database, encoder)
+        store = EagerFeatureStore.materialize(database, cast(Any, encoder))
         graph = InMemoryGraphIndexBuilder(self.reader).build()
         for node_type, frame in store.frames.items():
             graph.data[node_type].tf = frame
@@ -501,10 +550,10 @@ class ObservabilityTest(unittest.TestCase):
         code = """
 import sys
 import relconnector.connector
-import baseline.config
+import baseline.batch_baseline.config
 from benchmark import TelemetryRecorder
 assert 'torch' not in sys.modules
-assert 'baseline.dataset' not in sys.modules
+assert 'baseline.batch_baseline.dataset' not in sys.modules
 with TelemetryRecorder().activate() as recorder:
     pass
 assert recorder.report()['overall']['duration_s'] >= 0

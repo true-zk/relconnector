@@ -94,6 +94,7 @@ class OnlineTrainingRunData(TypedDict):
     graph_bytes: int
     experiment: ExperimentMetadata
     telemetry: TelemetryReport
+    diagnostics: dict[str, object]
 
 
 @dataclass(frozen=True)
@@ -108,6 +109,7 @@ class OnlineTrainingRunResult:
     graph_bytes: int
     experiment: ExperimentMetadata
     telemetry: TelemetryReport
+    diagnostics: dict[str, object]
 
     def to_dict(self) -> OnlineTrainingRunData:
         return {
@@ -121,4 +123,5 @@ class OnlineTrainingRunResult:
             "graph_bytes": self.graph_bytes,
             "experiment": self.experiment,
             "telemetry": self.telemetry,
+            "diagnostics": self.diagnostics,
         }

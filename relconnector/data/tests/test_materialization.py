@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
@@ -12,6 +13,16 @@ from pandas.testing import assert_frame_equal
 from relbench.base import Database, Table, TaskType
 
 from data.contracts import RelBenchTask
+from data.initialize_node_ids import initialize_database
+from data.models import (
+    NODE_ID_COLUMN,
+    DatasetBundle,
+    MaterializedTable,
+    TableSchema,
+)
+from data.models import (
+    ColumnSchema as DataColumnSchema,
+)
 from data.source import RelBenchDatasetSource
 from data.writers import SQLiteDatabaseWriter
 from relconnector.connector import (
@@ -189,6 +200,96 @@ class MaterializationTest(unittest.TestCase):
                 pandas_reader.read_table(table_name),
                 check_dtype=True,
             )
+
+    def test_writer_adds_explicit_node_id_to_keyless_data_table(self) -> None:
+        path = Path(self.temporary_directory.name) / "keyless.sqlite"
+        frame = pd.DataFrame({"value": ["a", "b", "c"]})
+        bundle = DatasetBundle(
+            dataset_name="keyless",
+            tables={
+                "items": MaterializedTable(
+                    frame,
+                    TableSchema(
+                        "items",
+                        None,
+                        columns=(DataColumnSchema("value", 0, "object"),),
+                    ),
+                )
+            },
+        )
+
+        SQLiteDatabaseWriter(path).write(bundle)
+
+        reader = PandasDatabaseReader(path)
+        self.assertEqual(reader.schemas()["items"].primary_key, NODE_ID_COLUMN)
+        stored = reader.read_table("items")
+        self.assertEqual(stored[NODE_ID_COLUMN].tolist(), [0, 1, 2])
+        with sqlite3.connect(path) as connection:
+            details = [
+                str(row[3])
+                for row in connection.execute(
+                    f'EXPLAIN QUERY PLAN SELECT * FROM items WHERE "{NODE_ID_COLUMN}" = 1'
+                )
+            ]
+        self.assertTrue(any("SEARCH" in detail for detail in details), details)
+
+
+class NodeIdMigrationTest(unittest.TestCase):
+    def test_migrates_keyless_table_without_changing_logical_ids(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "legacy.sqlite"
+            with sqlite3.connect(path) as connection:
+                connection.execute("CREATE TABLE items (value TEXT)")
+                connection.executemany(
+                    "INSERT INTO items VALUES (?)", [("a",), ("b",), ("c",)]
+                )
+                connection.execute(
+                    "CREATE TABLE _relconnector_metadata "
+                    "(key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+                )
+                connection.execute(
+                    "CREATE TABLE _relconnector_tables "
+                    "(table_name TEXT PRIMARY KEY, table_kind TEXT NOT NULL, "
+                    "primary_key TEXT, time_column TEXT, task_name TEXT, split_column TEXT)"
+                )
+                connection.execute(
+                    "INSERT INTO _relconnector_tables VALUES "
+                    "('items', 'data', NULL, NULL, NULL, NULL)"
+                )
+                connection.execute(
+                    "CREATE TABLE _relconnector_columns "
+                    "(table_name TEXT NOT NULL, ordinal_position INTEGER NOT NULL, "
+                    "column_name TEXT NOT NULL, pandas_dtype TEXT NOT NULL, "
+                    "encoding TEXT NOT NULL, encoding_metadata TEXT NOT NULL, "
+                    "PRIMARY KEY (table_name, ordinal_position))"
+                )
+                connection.execute(
+                    "INSERT INTO _relconnector_columns VALUES "
+                    "('items', 0, 'value', 'object', 'scalar', '{}')"
+                )
+
+            dry_run = initialize_database(path)
+            self.assertFalse(dry_run.applied)
+            self.assertEqual(dry_run.tables[0].rows, 3)
+            self.assertTrue(
+                any("SCAN" in detail for detail in dry_run.tables[0].query_plan)
+            )
+            report = initialize_database(path, apply=True, vacuum=True)
+            self.assertTrue(report.applied)
+            self.assertTrue(
+                any("SEARCH" in detail for detail in report.tables[0].query_plan)
+            )
+            with sqlite3.connect(path) as connection:
+                rows = connection.execute(
+                    f'SELECT "{NODE_ID_COLUMN}", value FROM items '
+                    f'ORDER BY "{NODE_ID_COLUMN}"'
+                ).fetchall()
+                primary_key = connection.execute(
+                    "SELECT primary_key FROM _relconnector_tables "
+                    "WHERE table_name = 'items'"
+                ).fetchone()[0]
+            self.assertEqual(rows, [(0, "a"), (1, "b"), (2, "c")])
+            self.assertEqual(primary_key, NODE_ID_COLUMN)
 
 
 if __name__ == "__main__":

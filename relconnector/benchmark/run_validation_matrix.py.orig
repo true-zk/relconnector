@@ -1,0 +1,130 @@
+"""Run the three-way, two-epoch validation matrix sequentially."""
+
+from __future__ import annotations
+
+import argparse
+import subprocess
+import sys
+from pathlib import Path
+
+CASES = (
+    ("rel-amazon", "item-churn"),
+    ("rel-arxiv", "paper-citation"),
+    ("rel-avito", "searchstream-click"),
+    ("rel-event", "user-attendance"),
+    ("rel-f1", "driver-circuit-compete"),
+    ("rel-hm", "user-churn"),
+    ("rel-ratebeer", "beer_ratings-total_score"),
+    ("rel-salt", "item-incoterms"),
+    ("rel-stack", "user-badge"),
+    ("rel-trial", "eligibilities-adult"),
+)
+
+
+def _common(output: Path, *, device: str) -> list[str]:
+    command = [
+        "--epochs",
+        "2",
+        "--max-batches",
+        "10000",
+        "--batch-size",
+        "512",
+        "--num-neighbors",
+        "128,128",
+        "--channels",
+        "128",
+        "--torch-num-threads",
+        "1",
+        "--device",
+        device,
+        "--output",
+        str(output),
+        "--resume",
+    ]
+    return command
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=Path("benchmarks/validation-2epoch-10000"),
+    )
+    parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--device", default="cuda")
+    args = parser.parse_args(argv)
+    if args.device.startswith("cuda"):
+        import torch
+
+        if not torch.cuda.is_available():
+            raise RuntimeError(
+                "CUDA is unavailable; refusing to run this multi-day validation "
+                "matrix on CPU"
+            )
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+
+    runs = [
+        (
+            "batch",
+            [
+                sys.executable,
+                "-m",
+                "benchmark.runner",
+                "--executor",
+                "sync",
+            ],
+            args.output_dir / "batch.jsonl",
+        ),
+        (
+            "vanilla",
+            [
+                sys.executable,
+                "-m",
+                "benchmark.online_runner",
+                "--implementation",
+                "vanilla",
+                "--executor",
+                "sync",
+                "--feature-cache-mb",
+                "0",
+                *_common(
+                    args.output_dir / "vanilla.jsonl",
+                    resume=args.resume,
+                    device=args.device,
+                ),
+            ],
+        ),
+        (
+            "latest",
+            [
+                sys.executable,
+                "-m",
+                "benchmark.online_runner",
+                "--implementation",
+                "latest",
+                "--executor",
+                "async",
+                *_common(
+                    args.output_dir / "latest.jsonl",
+                    resume=args.resume,
+                    device=args.device,
+                ),
+            ],
+        ),
+    ]
+    for name, command in runs:
+        print(f"Starting {name}: {' '.join(command)}", flush=True)
+        completed = subprocess.run(command, check=False)
+        if completed.returncode:
+            print(
+                f"{name} completed with return code {completed.returncode}; "
+                "continuing to the next implementation",
+                file=sys.stderr,
+                flush=True,
+            )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

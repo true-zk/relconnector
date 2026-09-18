@@ -6,8 +6,11 @@ import json
 import os
 import sqlite3
 from abc import ABC, abstractmethod
+from dataclasses import replace
 from pathlib import Path
 from typing import Protocol, cast
+
+import numpy as np
 
 from .encoding import encode_frame, sqlite_type
 from .models import (
@@ -15,9 +18,12 @@ from .models import (
     COLUMNS_TABLE,
     FOREIGN_KEYS_TABLE,
     METADATA_TABLE,
+    NODE_ID_COLUMN,
     TABLES_TABLE,
     TASKS_TABLE,
+    ColumnSchema,
     DatasetBundle,
+    MaterializedTable,
     TableSchema,
 )
 
@@ -69,6 +75,7 @@ class SQLiteDatabaseWriter(BaseDatabaseWriter):
         return self.url
 
     def _write_file(self, path: Path, bundle: DatasetBundle) -> None:
+        bundle = _with_explicit_node_ids(bundle)
         connection = sqlite3.connect(path)
         try:
             connection.execute("PRAGMA foreign_keys = OFF")
@@ -95,6 +102,36 @@ class SQLiteDatabaseWriter(BaseDatabaseWriter):
             connection.commit()
         finally:
             connection.close()
+
+
+def _with_explicit_node_ids(bundle: DatasetBundle) -> DatasetBundle:
+    tables: dict[str, MaterializedTable] = {}
+    changed = False
+    for name, materialized in bundle.tables.items():
+        schema = materialized.schema
+        if schema.kind != "data" or schema.primary_key is not None:
+            tables[name] = materialized
+            continue
+        if NODE_ID_COLUMN in materialized.frame.columns:
+            raise ValueError(
+                f"Table {name!r} reserves {NODE_ID_COLUMN!r} for its node ID"
+            )
+        frame = materialized.frame.copy()
+        frame.insert(0, NODE_ID_COLUMN, np.arange(len(frame), dtype=np.int64))
+        columns = (
+            ColumnSchema(NODE_ID_COLUMN, 0, "int64"),
+            *(replace(column, ordinal=column.ordinal + 1) for column in schema.columns),
+        )
+        tables[name] = MaterializedTable(
+            frame=frame,
+            schema=replace(
+                schema,
+                primary_key=NODE_ID_COLUMN,
+                columns=columns,
+            ),
+        )
+        changed = True
+    return replace(bundle, tables=tables) if changed else bundle
 
 
 def _create_data_table(connection: sqlite3.Connection, schema: TableSchema) -> None:

@@ -8,8 +8,9 @@
 - [relconnector/](relconnector/README.md)：在线 reader、图索引、采样、特征缓存、组装、训练和 executor。
 - [baseline/](baseline/README.md)：保留全量读库和 TensorFrame 物化的朴素实现。
 - [benchmark/](benchmark/README.md)：通用计时/内存工具、实验编排、子进程运行与结果比较。
+- [doc/](doc/README.md)：架构讨论、实施计划、验证记录和 GPU 实验报告。
 
-训练实现不依赖 benchmark；benchmark 调用两套实现。benchmark/ 是代码，benchmarks/ 是实验产物，data/relbench/ 是数据库。安装包含三个运行包，不包含离线工具、SQLite 或实验产物。
+训练实现不依赖 benchmark；benchmark 调用两套实现。benchmark/ 是代码，benchmarks/ 是实验产物，data/relbench/ 是数据库。安装包含运行包、版本化正确性契约及离线工具；不包含 SQLite 或实验产物。
 
 ## 环境
 
@@ -21,6 +22,10 @@ uv pip install --python ../.venv/bin/python -e '.[connectorx,training,dev]'
 ```
 
 ## 在线训练
+
+首次使用旧数据库，请先运行 `python -m data.update_catalog_metadata`，再运行
+`python -m data.initialize_stypes`。训练只读已固化的官方 stype；文件缺失或过期会拒绝启动。
+`baseline/cache_baseline` 是缓存优化后的基线，支持 `--implementation cache`。
 
 ```python
 from relconnector import OnlineRelBenchModel, OnlineTrainingConfig

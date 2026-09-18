@@ -51,7 +51,7 @@ def decode_frame(frame: pd.DataFrame, columns: Iterable[ColumnSchema]) -> pd.Dat
 
 def _restore_dtype(series: pd.Series, dtype_name: str) -> pd.Series:
     if dtype_name == "object":
-        return series
+        return series.astype(object)
     try:
         return series.astype(dtype_name)
     except (TypeError, ValueError):

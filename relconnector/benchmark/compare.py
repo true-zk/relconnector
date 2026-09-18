@@ -50,6 +50,7 @@ def load_runs(path: Path) -> dict[tuple[str, str], MeasuredRun]:
 
 def differences(left: MeasuredRun, right: MeasuredRun) -> list[str]:
     fields = (
+        "correctness_version",
         "reader",
         "executor",
         "feature_encoder",

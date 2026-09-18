@@ -37,7 +37,11 @@ class RelBenchMaterializer:
         overwrite: bool = False,
     ) -> str:
         bundle = self.source.load(dataset_name, task_names, all_tasks=all_tasks)
-        return self.writer.write(bundle, overwrite=overwrite)
+        url = self.writer.write(bundle, overwrite=overwrite)
+        if url.startswith("sqlite://"):
+            from .initialize_stypes import initialize_database
+            initialize_database(url[len("sqlite://"):])
+        return url
 
 
 def download_relbench_data(

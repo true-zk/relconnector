@@ -24,7 +24,12 @@ python -m benchmark.compare benchmarks/baseline-all.jsonl benchmarks/online-all.
 
 两个 runner 都支持 --dataset、--task 多次传入，默认遍历本地库的所有任务。--resume 只跳过成功项；务必用相同配置续跑，不同配置使用不同输出文件。不要同时跑正式对比实验，也不要将冷启动、暖 OS 页缓存、物化缓存混为同一口径。
 
-online_runner 还可设置 --executor sync/async、--feature-cache-mb、--seed-queue-mb、--plan-queue-mb、--ready-queue-mb、--text-batch-size、--text-model-path。首轮建议较小 batch 和 fanout，再按实测资源提高预算。
+online_runner 还可设置 `--executor`、`--feature-cache-mb`、
+`--encoded-feature-cache-mb`、`--text-cache-admission`、
+`--text-execution official/direct`、`--encode-workers`、
+`--fetched-queue-mb` 和 `--feature-policy static/adaptive`。使用
+`--no-operation-telemetry`、`--no-initialization-cache` 做开销和冷启动消融。
+首轮建议较小 batch 和 fanout，再按实测资源提高预算。
 
 ## 指标口径
 
@@ -59,3 +64,43 @@ report = recorder.report()
 ```
 
 仅导入计时器或 connector 不会加载两套训练栈；torch 未导入时计时器只测 CPU 资源。训练代码不反向导入本目录。
+
+## 在线实现版本对比
+
+`online_runner` 可直接选择冻结的上一版或当前最新实现：
+
+```bash
+# 冻结的旧在线实现
+../.venv/bin/python -m benchmark.online_runner \
+  --implementation vanilla --dataset rel-f1 --max-batches 10 \
+  --output benchmarks/vanilla-smoke.jsonl --overwrite
+
+# 当前实现
+../.venv/bin/python -m benchmark.online_runner \
+  --implementation latest --dataset rel-f1 --max-batches 10 \
+  --output benchmarks/latest-smoke.jsonl --overwrite
+```
+
+latest 结果的 `diagnostics` 包含节点重复率、SQL amplification、raw/encoded
+cache、GloVe cache、按表/列操作计时、初始化 cache 命中、动态 window 决策，以及
+四层 queue 的等待时间与峰值占用。worker 会周期性写 progress snapshot，超时结果
+保留最后完成的 `BatchKey`、operation/cache/policy/queue 指标。异步结果的
+`diagnostics.pipeline.epochs` 还会记录各 epoch 的 batch 数、loss、wall time、
+吞吐和 raw/encoded/text cache 精确 delta。
+
+`--feature-window-max-batches` 是 adaptive look-ahead 上限。
+
+## cache 基线与正确性版本
+
+`--implementation cache` 运行独立 `baseline.cache_baseline`；`vanilla` 保留逐批特征
+处理，`latest` 用于继续开发，`benchmark.runner` 运行全量 batch baseline。
+所有训练入口要求数据库旁存在有效 `.stypes.json`。
+
+新结果包含 `experiment.correctness_version=relbench-correctness-v1`。
+目标隐藏、stype 和 dtype 修正改变模型输入，必须新建输出文件；不能用历史
+`gpu-real-*` 或 `gpu-feature-optimized.jsonl` 的成功记录执行 resume。
+`benchmark.compare` 检查 correctness_version，保持原有 loss 容差。
+
+`feature_fetch.featureless_rows` 统计只有常量特征而无需 SQL 的唯一节点行；
+SQL amplification 分母为 unique_rows - cache_served_rows - featureless_rows。
+该统计修复解释了旧 Event 结果小于 1 的异常值，旧 JSONL 不重算覆盖。

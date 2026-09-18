@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
+from typing import cast
 
 from relconnector.features import (
     BatchAssembler,
@@ -52,6 +53,13 @@ class MeasuredFeatureFetcher:
         with self.recorder.operation("feature_fetch"):
             return self.inner.fetch(plan)
 
+    def fetch_many(self, plans: list[SamplePlan]) -> list[FeatureBatch]:
+        with self.recorder.operation("feature_fetch"):
+            method = getattr(self.inner, "fetch_many", None)
+            if callable(method):
+                return cast(list[FeatureBatch], method(plans))
+            return [self.inner.fetch(plan) for plan in plans]
+
 
 class MeasuredBatchAssembler:
     def __init__(self, inner: BatchAssembler, recorder: TelemetryRecorder) -> None:
@@ -62,12 +70,28 @@ class MeasuredBatchAssembler:
         with self.recorder.operation("batch_assemble"):
             return self.inner.assemble(features)
 
+    def assemble_many(self, features: list[FeatureBatch]) -> list[PreparedBatch]:
+        with self.recorder.operation("batch_assemble"):
+            method = getattr(self.inner, "assemble_many", None)
+            if callable(method):
+                return cast(list[PreparedBatch], method(features))
+            return [self.inner.assemble(item) for item in features]
+
 
 class MeasuredTrainer:
-    def __init__(self, inner: Trainer, recorder: TelemetryRecorder) -> None:
+    def __init__(
+        self,
+        inner: Trainer,
+        recorder: TelemetryRecorder,
+        on_step: Callable[[PreparedBatch, TrainStepResult], None] | None = None,
+    ) -> None:
         self.inner = inner
         self.recorder = recorder
+        self.on_step = on_step
 
     def train_step(self, batch: PreparedBatch) -> TrainStepResult:
         with self.recorder.operation("train_step", synchronize_cuda=True):
-            return self.inner.train_step(batch)
+            result = self.inner.train_step(batch)
+        if self.on_step is not None:
+            self.on_step(batch, result)
+        return result

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from relbench.base import TaskType
 
+from relbench_compat.tasks import hidden_columns
 from relconnector.connector.catalog import TaskMetadata
 
 
@@ -41,7 +42,12 @@ class TaskSpec:
             time_column=_optional_string(metadata.time_column),
             dst_entity_table=destination_table,
             dst_entity_column=destination_column,
-            hidden_columns=_hidden_columns(metadata.extra.get("hidden_columns")),
+            hidden_columns=hidden_columns(
+                metadata.extra,
+                name=metadata.name,
+                entity_table=metadata.entity_table,
+                target_column=metadata.target_column,
+            ),
         )
 
 
@@ -53,16 +59,3 @@ def _required(value: object, field: str) -> str:
 
 def _optional_string(value: object) -> str | None:
     return None if value is None or value == "" else str(value)
-
-
-def _hidden_columns(value: object) -> tuple[tuple[str, str], ...]:
-    if value is None:
-        return ()
-    if not isinstance(value, list):
-        raise TypeError("hidden_columns must be a list")
-    output: list[tuple[str, str]] = []
-    for pair in value:
-        if not isinstance(pair, (list, tuple)) or len(pair) != 2:
-            raise TypeError("hidden_columns must contain [table, column] pairs")
-        output.append((str(pair[0]), str(pair[1])))
-    return tuple(output)

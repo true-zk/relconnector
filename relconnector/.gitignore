@@ -1,5 +1,6 @@
 benchmarks/*.jsonl
 data/relbench/*.materialized/
+data/relbench-explicit-node-id/*
 
 benchmarks/.relconnector-benchmark-*/
 benchmarks/.online-benchmark-*/
