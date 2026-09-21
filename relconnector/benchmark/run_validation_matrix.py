@@ -101,6 +101,8 @@ def main(argv: list[str] | None = None) -> int:
                 "latest",
                 "--executor",
                 "async",
+                "--ready-queue-mb",
+                "16384",
             ],
             args.output_dir / "latest.jsonl",
         ),

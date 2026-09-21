@@ -1,0 +1,163 @@
+<title>RelConnector V2 三阶段多进程架构设计</title>
+
+<callout emoji="📌" background-color="light-blue" border-color="blue">
+  <p><b>文档定位：</b>面向开发者、性能工程师与技术评审者的设计 RFC。</p>
+  <p><b>核心结论：</b>V2 将数据供应拆为 Sample、Assembly、Train 三个并发阶段，以共享内存、字节级背压、跨 epoch 缓存和反馈式 worker 调节缩短 GPU 等待时间。</p>
+  <p><b>状态：</b>三阶段运行时、共享缓存、strict/ready 顺序和跨 epoch 预取已实现；Direct stype payload 与正式十任务矩阵仍在推进。</p>
+</callout>
+
+<h1 seq="auto">背景与问题定义</h1>
+<p>RelConnector 从 SQLite 读取关系数据，采样局部子图，把原始列映射为 TensorFrame，再送入 GPU 模型训练。旧路径把采样、SQL、文本编码、TensorFrame 转换和训练串接在同一关键路径上。大型文本任务中，CPU Assembly 显著慢于 GPU 消费，ready queue 长时间为空。</p>
+<table>
+  <thead><tr><th background-color="light-gray"><p>工作负载</p></th><th background-color="light-gray"><p>Steps</p></th><th background-color="light-gray"><p>Wall</p></th><th background-color="light-gray"><p>Assembly</p></th><th background-color="light-gray"><p>Train</p></th><th background-color="light-gray"><p>Ready 等待</p></th></tr></thead>
+  <tbody>
+    <tr><td><p>Arxiv latest，1 epoch</p></td><td><p>1044</p></td><td><p>2855s</p></td><td><p>2746s</p></td><td><p>290s</p></td><td background-color="light-red"><p>2516s</p></td></tr>
+    <tr><td><p>Salt latest，2x50</p></td><td><p>100</p></td><td><p>141s</p></td><td><p>261 CPU-s</p></td><td><p>42s</p></td><td background-color="light-orange"><p>99s</p></td></tr>
+    <tr><td><p>Ratebeer latest，2x20</p></td><td><p>40</p></td><td><p>53s</p></td><td><p>81 CPU-s</p></td><td><p>14s</p></td><td background-color="light-orange"><p>39s</p></td></tr>
+  </tbody>
+</table>
+<p>Salt 细粒度计时显示：frame_convert 132.3s，其中 map_text_embedded 121.9s；text_cache_lookup 47.2s，frame_gather 42.9s，而 Direct GloVe 的 tokenize、lookup、pool 合计约 5.5s。计时存在包含关系，但证明瓶颈已扩散至通用转换和 gather 路径。</p>
+
+<h2 seq="auto">目标与边界</h2>
+<ul>
+  <li>让采样、CPU 特征组装和 GPU 训练重叠执行，减少 GPU starvation。</li>
+  <li>用多进程绕过 Python GIL，以共享缓存消除多 worker 重复编码。</li>
+  <li>所有预取以 retained bytes 为边界，避免无界内存增长。</li>
+  <li>缓存和准备跨 epoch 延续，训练指标与 scheduler 仍按 epoch 串行。</li>
+  <li>保留历史 baseline、strict 顺序和独立开关，支持隔离归因与回退。</li>
+  <li>不在 Assembly 创建 CUDA context，不跨进程发送 DataFrame 或原始长文本。</li>
+</ul>
+
+<h1 seq="auto">总体架构</h1>
+<p>父进程负责生命周期协调和 GPU Trainer。Sample 与 Assembly 使用 torch.multiprocessing 的 spawn context。大 tensor 通过 PyTorch shared-memory storage 共享，队列只传小型描述符和控制消息。</p>
+<whiteboard type="mermaid">
+flowchart LR
+    Seed[Seed Source] --> SQ[Seed Queue]
+    SQ --> Sample[Sample Process]
+    Sample --> PQ[Plan Queue]
+    PQ --> Dispatch[Coordinator]
+    Dispatch --> A0[Assembly 0]
+    Dispatch --> A1[Assembly 1]
+    Dispatch --> AN[Assembly N]
+    A0 --> Cache[(Shared Caches)]
+    A1 --> Cache
+    AN --> Cache
+    A0 --> RQ[Ready Pool]
+    A1 --> RQ
+    AN --> RQ
+    RQ --> Gate[Epoch Gate and Order]
+    Gate --> GPU[GPU Trainer]
+    GPU --> Dispatch
+</whiteboard>
+
+<h2 seq="auto">阶段职责</h2>
+<table>
+  <thead><tr><th background-color="light-gray"><p>阶段</p></th><th background-color="light-gray"><p>职责</p></th><th background-color="light-gray"><p>明确不做</p></th></tr></thead>
+  <tbody>
+    <tr><td><p><b>Sample</b></p></td><td><p>读取 SeedBatch，生成可复现的 SamplePlan；分配 epoch、batch 和全局 sequence。</p></td><td><p>不读特征，不创建大 DataFrame，不触碰 CUDA。</p></td></tr>
+    <tr><td><p><b>Assembly Pool</b></p></td><td><p>各进程持有只读 SQLite、raw cache、GloVe 和 TensorFrame converter；查询、编码、gather 并发布 PreparedBatch。</p></td><td><p>不训练模型，不把长文本放进 IPC queue。</p></td></tr>
+    <tr><td><p><b>Train</b></p></td><td><p>重建 batch view，执行 H2D 和模型 step；维护 epoch gate、顺序、指标和 release。</p></td><td><p>不执行 SQL 和文本编码，不跨 epoch 提前训练。</p></td></tr>
+    <tr><td><p><b>Coordinator</b></p></td><td><p>管理窗口、字节预算、worker permit、错误传播、关闭和快照。</p></td><td><p>不成为大 payload 的中心复制节点。</p></td></tr>
+  </tbody>
+</table>
+
+<h2 seq="auto">核心数据契约</h2>
+<pre lang="text" caption="跨阶段的小型描述符"><code>SeedBatch: epoch, batch, seed ids, estimated bytes
+SamplePlan: BatchKey, sequence, topology handles, feature requests
+PlanWindow: window id, plans, allocated bytes
+PreparedBatch: BatchKey, sequence, tensor descriptors, release metadata
+RuntimeResult: batch counts, queue, worker, cache and timing diagnostics</code></pre>
+
+<h1 seq="auto">跨 Epoch 时序与顺序语义</h1>
+<p>Epoch 是训练消费边界，不再是采样和 Assembly 的准备边界。只要特征不依赖模型状态，Sample 和 Assembly 可以在 epoch N 训练期间准备 epoch N+1。Trainer 必须完成当前 epoch 的全部 batch、指标和 scheduler hook，再打开下一 epoch gate。</p>
+<whiteboard type="mermaid">
+sequenceDiagram
+    participant S as Sample
+    participant A as Assembly Pool
+    participant R as Ready Pool
+    participant T as Trainer
+    S->>A: epoch N plans
+    A->>R: epoch N batches
+    R->>T: current epoch batches
+    par Train epoch N
+        T->>T: H2D forward backward
+    and Prefetch epoch N+1
+        S->>A: next epoch plans
+        A->>R: next epoch batches
+    end
+    T->>T: metrics and scheduler
+    T->>R: open epoch N+1 gate
+    R->>T: epoch N+1 batches
+</whiteboard>
+<ul>
+  <li><b>strict：</b>按全局 sequence FIFO 消费，是 correctness 与性能归因基准。</li>
+  <li><b>ready：</b>消费当前 epoch 已完成 batch，消除慢窗口队头阻塞；不得跨 epoch。</li>
+  <li>每个 batch 内随机数由 BatchKey 派生；ready 模式记录实际消费顺序。</li>
+  <li>验收要求 batch 集合无遗漏、无重复，feature tensor 与 strict 逐值一致，并以多个训练 seed 判断最终指标。</li>
+</ul>
+
+<h1 seq="auto">共享缓存</h1>
+<h2 seq="auto">共享文本向量缓存</h2>
+<p>固定宽 GloVe 向量存放于共享 float32 slab。索引使用 BLAKE2b 指纹和开放寻址。首个观察到 key 的 worker 占有 slot，其他 worker 等待发布，避免并发编码相同文本。</p>
+<whiteboard type="mermaid">
+stateDiagram-v2
+    [*] --> EMPTY
+    EMPTY --> RESERVED: miss and claim
+    RESERVED --> READY: write and publish
+    RESERVED --> EMPTY: failure or cancel
+    RESERVED --> RESERVED: other worker waits
+    READY --> READY: cache hit
+    READY --> [*]: run shutdown
+</whiteboard>
+<ul>
+  <li>状态、owner 与向量 slab 通过 torch shared memory 跨 spawn 进程可见。</li>
+  <li>缓存由 max_bytes 限制；容量耗尽时拒绝准入，不突破预算。</li>
+  <li>F1 双进程 smoke 记录 875 hits、1430 misses 和 246 reservation waits，证明重复编码被抑制。</li>
+</ul>
+
+<h2 seq="auto">共享 Encoded TensorFrame 缓存</h2>
+<p>key 由数据库版本、schema fingerprint、table 和 node_id 构成，epoch 不进入 key。当前实现使用 manager-backed 单一 index owner，批量 lookup、reserve 和 publish；tensor row 存于共享 storage。</p>
+<ul>
+  <li>命中时直接 gather 已编码 stype row，跳过 SQL 解码、列 mapper 和 GloVe。</li>
+  <li>miss 由单 worker 预留并批量发布；等待者读取同一共享 row。</li>
+  <li>若 manager RPC 超过 Assembly 时间的 10%，后续按 table 和 node hash 分片。</li>
+  <li>长期设计使用 generation、pin 和 release 防止 eviction 后旧 descriptor 误读。</li>
+</ul>
+
+<h1 seq="auto">背压、内存与所有权</h1>
+<p>seed、plan 和 ready queue 同时受 max_items 与 max_bytes 约束。生产者先从 SharedByteBudget 获取额度，消费者接管 item 后释放。窗口另受 batches、bytes 和 max_inflight_windows 三重限制。</p>
+<table>
+  <thead><tr><th background-color="light-gray"><p>资源</p></th><th background-color="light-gray"><p>预算依据</p></th><th background-color="light-gray"><p>释放点</p></th></tr></thead>
+  <tbody>
+    <tr><td><p>Seed queue</p></td><td><p>SeedBatch 估算字节</p></td><td><p>Sampler 转化完成</p></td></tr>
+    <tr><td><p>Plan queue</p></td><td><p>topology tensor bytes</p></td><td><p>Assembly 接管窗口</p></td></tr>
+    <tr><td><p>Ready queue</p></td><td><p>Prepared feature bytes</p></td><td><p>Trainer 完成消费和 release</p></td></tr>
+    <tr><td><p>Shared cache</p></td><td><p>全 run 固定 byte budget</p></td><td><p>运行关闭；未来按 pin/generation 淘汰</p></td></tr>
+  </tbody>
+</table>
+
+<h1 seq="auto">反馈式 Worker 调节</h1>
+<p>运行时预先 spawn 最大数量的 Assembly 进程，通过 ActiveWorkerGate 控制 permit。当前离散策略在 ready starvation 且 plan 有积压时扩容，在 ready bytes 持续超过 75% 水位时缩容，避免频繁创建进程。</p>
+<whiteboard type="mermaid">
+flowchart TD
+    Tick[Control Tick] --> Read[Read queue bytes and trainer wait]
+    Read --> Starve{Ready starved and plan backlog?}
+    Starve -->|Yes| Up[Increase active workers]
+    Starve -->|No| High{Ready above high watermark?}
+    High -->|Yes| Down[Decrease active workers]
+    High -->|No| Hold[Keep permits]
+    Up --> Observe[Observe service rates and RSS]
+    Down --> Observe
+    Hold --> Observe
+    Observe --> Tick
+</whiteboard>
+<p>后续控制输入将扩展为三阶段 service rate、queue wait、GPU idle、worker RSS、cache hit/miss、reservation wait、IPC bytes 与 slab 分配回收延迟。第一版保持可解释的离散规则，不引入 PID。</p>
+
+<h1 seq="auto">TensorFrame 路径</h1>
+<h2 seq="auto">Phase A：当前已实现</h2>
+<p>Assembly 进程继续使用现有 TensorFrame converter。CPU tensor 由 PyTorch multiprocessing transport 共享 storage，completion queue 不序列化 tensor 内容；Trainer 消费 PreparedBatch，HeteroEncoder 保持不变。</p>
+<h2 seq="auto">Phase B：规划中的 Direct stype payload</h2>
+<p>EncodedFeaturePayload 将直接包含 feat_dict、col_names_dict、num_rows 与 ownership token。Worker 直接生成 numerical、categorical、timestamp 和 embedding tensor，跳过 DataFrame converter；Trainer 仅做 O(stype count) 的轻量 TensorFrame 包装。</p>
+<callout emoji="⚠️" background-color="light-yellow" border-color="orange">
+  <p>Direct stype payload 尚未完成，不应计入当前 V2 性能结论。它针对 Salt 中 frame_convert 和 frame_gather 的剩余瓶颈。</p>
+</callout>

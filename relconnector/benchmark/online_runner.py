@@ -388,7 +388,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--executor", choices=("sync", "async"), default="async")
     parser.add_argument("--seed-queue-mb", type=int, default=64)
     parser.add_argument("--plan-queue-mb", type=int, default=2048)
-    parser.add_argument("--ready-queue-mb", type=int, default=8192)
+    parser.add_argument("--ready-queue-mb", type=int, default=16384)
     parser.add_argument("--feature-window-batches", type=int, default=4)
     parser.add_argument("--feature-window-max-batches", type=int, default=32)
     parser.add_argument("--feature-window-mb", type=int, default=512)

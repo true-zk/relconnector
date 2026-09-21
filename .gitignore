@@ -11,5 +11,6 @@ relconnector/.ruff_cache/
 relconnector/*.egg-info/
 relconnector/data/relbench/*
 !relconnector/data/relbench/.gitkeep
-
+relconnector/benchmarks/*
+relconnector/.dbg/*
 a.py

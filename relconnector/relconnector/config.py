@@ -26,7 +26,7 @@ class OnlineTrainingConfig:
     executor: Literal["sync", "async"] = "async"
     seed_queue_bytes: int = 64 * 1024 * 1024
     plan_queue_bytes: int = 2 * 1024 * 1024 * 1024
-    ready_queue_bytes: int = 8 * 1024 * 1024 * 1024
+    ready_queue_bytes: int = 16 * 1024 * 1024 * 1024
     feature_window_batches: int = 4
     feature_window_max_batches: int = 32
     feature_window_bytes: int = 512 * 1024 * 1024

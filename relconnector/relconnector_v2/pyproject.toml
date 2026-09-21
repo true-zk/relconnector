@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "relconnector-v2"
+version = "0.1.0"
+description = "Three-stage multiprocess RelBench training pipeline"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.0",
+    "relbench>=3.0,<4",
+    "sentence-transformers>=5",
+]
+
+[project.optional-dependencies]
+connectorx = ["connectorx>=0.4.5", "pyarrow>=14"]
+dev = ["pyright>=1.1.400", "ruff>=0.16"]
+
+[tool.setuptools.packages.find]
+include = ["relconnector_v2", "relconnector_v2.*"]
+namespaces = false
+
+[tool.ruff]
+line-length = 88
