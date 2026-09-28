@@ -1,0 +1,279 @@
+{
+  "dataset": "rel-avito",
+  "path": "/home/zk/relconnector/relconnector/data/relbench/rel-avito.sqlite",
+  "sqlite_bytes": 1501802496,
+  "metadata": {
+    "catalog_version": "1",
+    "dataset_name": "rel-avito",
+    "source": "relbench",
+    "source_spec": "stanford-star/relbench-v1/rel-avito",
+    "relbench_version": "3.0.1",
+    "source_revision": "",
+    "created_at": "2026-09-24T13:52:37.008334+00:00",
+    "val_timestamp": "2015-05-08T00:00:00",
+    "test_timestamp": "2015-05-14T00:00:00"
+  },
+  "snapshot": "d8e976fd0a4b78877204bc8dfbcfc9a9f7f48600",
+  "source_repo": "stanford-star/relbench-v1",
+  "cutoff": "2015-05-14T00:00:00",
+  "stype_dependencies": {
+    "relbench": "3.0.1",
+    "pytorch-frame": "0.3.0",
+    "pandas": "3.0.5",
+    "numpy": "2.5.3"
+  },
+  "tables": [
+    {
+      "table": "AdsInfo",
+      "rows": 5960558,
+      "cutoff_rows": 5960558,
+      "columns": 6,
+      "sqlite_columns": 6,
+      "text_columns": [
+        "Title"
+      ],
+      "sql_text_columns": [
+        "Title"
+      ],
+      "stypes": {
+        "AdID": "numerical",
+        "LocationID": "numerical",
+        "CategoryID": "numerical",
+        "Price": "numerical",
+        "Title": "text_embedded",
+        "IsContext": "numerical"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": null,
+      "time_bounds": null,
+      "parquet_bytes": 205698705,
+      "parquet_rows": 5960558,
+      "parquet_columns": 6
+    },
+    {
+      "table": "Category",
+      "rows": 68,
+      "cutoff_rows": 68,
+      "columns": 4,
+      "sqlite_columns": 4,
+      "text_columns": [],
+      "sql_text_columns": [],
+      "stypes": {
+        "CategoryID": "numerical",
+        "Level": "numerical",
+        "ParentCategoryID": "numerical",
+        "SubcategoryID": "numerical"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": null,
+      "time_bounds": null,
+      "parquet_bytes": 3775,
+      "parquet_rows": 68,
+      "parquet_columns": 4
+    },
+    {
+      "table": "Location",
+      "rows": 3512,
+      "cutoff_rows": 3512,
+      "columns": 4,
+      "sqlite_columns": 4,
+      "text_columns": [],
+      "sql_text_columns": [],
+      "stypes": {
+        "LocationID": "numerical",
+        "Level": "numerical",
+        "RegionID": "numerical",
+        "CityID": "numerical"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": null,
+      "time_bounds": null,
+      "parquet_bytes": 44642,
+      "parquet_rows": 3512,
+      "parquet_columns": 4
+    },
+    {
+      "table": "PhoneRequestsStream",
+      "rows": 302974,
+      "cutoff_rows": 244435,
+      "columns": 4,
+      "sqlite_columns": 5,
+      "text_columns": [],
+      "sql_text_columns": [
+        "PhoneRequestDate"
+      ],
+      "stypes": {
+        "UserID": "numerical",
+        "IPID": "numerical",
+        "AdID": "numerical",
+        "PhoneRequestDate": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "PhoneRequestDate",
+      "time_bounds": [
+        "2015-04-25T00:00:08",
+        "2015-05-20T17:55:09"
+      ],
+      "parquet_bytes": 5385901,
+      "parquet_rows": 302974,
+      "parquet_columns": 4
+    },
+    {
+      "table": "SearchInfo",
+      "rows": 2579289,
+      "cutoff_rows": 1987156,
+      "columns": 8,
+      "sqlite_columns": 8,
+      "text_columns": [
+        "SearchQuery"
+      ],
+      "sql_text_columns": [
+        "SearchDate",
+        "SearchQuery"
+      ],
+      "stypes": {
+        "UserID": "numerical",
+        "SearchID": "numerical",
+        "SearchDate": "timestamp",
+        "IPID": "numerical",
+        "IsUserLoggedOn": "numerical",
+        "SearchQuery": "text_embedded",
+        "LocationID": "numerical",
+        "CategoryID": "numerical"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "SearchDate",
+      "time_bounds": [
+        "2015-04-25T00:00:01",
+        "2015-05-20T17:59:56"
+      ],
+      "parquet_bytes": 41237079,
+      "parquet_rows": 2579289,
+      "parquet_columns": 8
+    },
+    {
+      "table": "SearchStream",
+      "rows": 9254702,
+      "cutoff_rows": 7107277,
+      "columns": 7,
+      "sqlite_columns": 8,
+      "text_columns": [],
+      "sql_text_columns": [
+        "SearchDate"
+      ],
+      "stypes": {
+        "SearchID": "numerical",
+        "AdID": "numerical",
+        "Position": "numerical",
+        "ObjectType": "numerical",
+        "HistCTR": "numerical",
+        "IsClick": "numerical",
+        "SearchDate": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "SearchDate",
+      "time_bounds": [
+        "2015-04-25T00:00:01",
+        "2015-05-20T17:59:56"
+      ],
+      "parquet_bytes": 93574840,
+      "parquet_rows": 9254702,
+      "parquet_columns": 7
+    },
+    {
+      "table": "UserInfo",
+      "rows": 98250,
+      "cutoff_rows": 98250,
+      "columns": 5,
+      "sqlite_columns": 5,
+      "text_columns": [],
+      "sql_text_columns": [],
+      "stypes": {
+        "UserID": "numerical",
+        "UserAgentID": "numerical",
+        "UserAgentOSID": "numerical",
+        "UserDeviceID": "numerical",
+        "UserAgentFamilyID": "numerical"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": null,
+      "time_bounds": null,
+      "parquet_bytes": 967239,
+      "parquet_rows": 98250,
+      "parquet_columns": 5
+    },
+    {
+      "table": "VisitStream",
+      "rows": 6454562,
+      "cutoff_rows": 5277861,
+      "columns": 4,
+      "sqlite_columns": 5,
+      "text_columns": [],
+      "sql_text_columns": [
+        "ViewDate"
+      ],
+      "stypes": {
+        "UserID": "numerical",
+        "IPID": "numerical",
+        "AdID": "numerical",
+        "ViewDate": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "ViewDate",
+      "time_bounds": [
+        "2015-04-25T00:00:00",
+        "2015-05-20T17:59:19"
+      ],
+      "parquet_bytes": 77298046,
+      "parquet_rows": 6454562,
+      "parquet_columns": 4
+    }
+  ],
+  "tasks": [
+    {
+      "table": "target_ad_ctr",
+      "rows": 8682,
+      "columns": 5
+    },
+    {
+      "table": "target_searchinfo_isuserloggedon",
+      "rows": 2579289,
+      "columns": 5
+    },
+    {
+      "table": "target_searchstream_click",
+      "rows": 4315120,
+      "columns": 5
+    },
+    {
+      "table": "target_user_ad_visit",
+      "rows": 152724,
+      "columns": 5
+    },
+    {
+      "table": "target_user_clicks",
+      "rows": 128633,
+      "columns": 5
+    },
+    {
+      "table": "target_user_visits",
+      "rows": 152727,
+      "columns": 5
+    }
+  ],
+  "rows": 24653915,
+  "cutoff_rows": 20679117,
+  "columns": 42,
+  "sqlite_columns": 45,
+  "parquet_bytes": 424210227,
+  "text_count": 2,
+  "sql_text_count": 6
+}

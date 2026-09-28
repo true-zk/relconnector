@@ -5,7 +5,7 @@
 
 ## 实施范围
 
-本轮只修改 latest、benchmark 和测试，`cache_baseline`、`vanilla_baseline`、
+本轮只修改 v1、benchmark 和测试，`cache_baseline`、`vanilla_baseline`、
 `batch_baseline` 保持冻结。所有版本继续读取同一份官方 `.stypes.json`；未按列名
 修改 stype，也未删除 URL、邮箱、电话等字段。
 
@@ -54,7 +54,7 @@
   `0.5770172774791718`，差值为 0。
 - 文本覆盖空值、OOV、标点、大小写和长文本：direct 与 official 输出
   `torch.equal=True`，最大绝对误差为 0。
-- cache baseline worker 仍可运行，证明新增 latest 配置已正确过滤。
+- cache baseline worker 仍可运行，证明新增 v1 配置已正确过滤。
 
 ### 性能与资源
 

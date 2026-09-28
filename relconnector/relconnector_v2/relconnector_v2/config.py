@@ -36,10 +36,17 @@ class OnlineTrainingConfig:
     out_channels: int | None = None
     text_batch_size: int = 256
     text_embedding_cache_bytes: int = 512 * 1024 * 1024
+    text_cache_scope: Literal["adaptive", "shared", "local"] = "adaptive"
     text_cache_admission: Literal["always", "second", "adaptive"] = "adaptive"
     text_execution: Literal["official", "direct"] = "direct"
+    disk_text_cache_mode: Literal["off", "on", "adaptive"] = "adaptive"
+    disk_text_cache_min_database_bytes: int = 256 * 1024 * 1024
+    disk_text_cache_min_model_inputs: int = 4096
+    disk_text_cache_max_memory_hit_rate: float = 0.10
+    disk_text_cache_min_model_time_s: float = 1.0
     encoded_feature_cache_bytes: int = 2 * 1024 * 1024 * 1024
     encoded_cache_admission: Literal["always", "second", "adaptive"] = "adaptive"
+    encoded_cache_scope: Literal["shared", "local"] = "shared"
     assembly_processes: int = 4
     process_training_order: Literal["strict", "ready"] = "ready"
     cross_epoch_prefetch: bool = True
@@ -47,6 +54,7 @@ class OnlineTrainingConfig:
     process_initial_active_workers: int = 1
     process_adaptive_workers: bool = True
     process_worker_scale_interval_s: float = 0.5
+    process_progress_interval_s: float = 0.0
     process_start_method: Literal["spawn", "forkserver"] = "spawn"
     text_model_path: str | None = None
     operation_telemetry: bool = True
@@ -88,6 +96,7 @@ class OnlineTrainingConfig:
             min(
                 self.feature_cache_bytes,
                 self.text_embedding_cache_bytes,
+                self.disk_text_cache_min_database_bytes,
                 self.encoded_feature_cache_bytes,
             )
             < 0
@@ -105,10 +114,22 @@ class OnlineTrainingConfig:
             )
         if self.text_cache_admission not in {"always", "second", "adaptive"}:
             raise ValueError("invalid text cache admission")
+        if self.text_cache_scope not in {"adaptive", "shared", "local"}:
+            raise ValueError("invalid text cache scope")
         if self.text_execution not in {"official", "direct"}:
             raise ValueError("invalid text execution")
+        if self.disk_text_cache_mode not in {"off", "on", "adaptive"}:
+            raise ValueError("invalid disk text cache mode")
+        if self.disk_text_cache_min_model_inputs <= 0:
+            raise ValueError("disk text cache minimum inputs must be positive")
+        if not 0 <= self.disk_text_cache_max_memory_hit_rate <= 1:
+            raise ValueError("disk text cache hit-rate threshold must be in [0, 1]")
+        if self.disk_text_cache_min_model_time_s < 0:
+            raise ValueError("disk text cache model-time threshold cannot be negative")
         if self.encoded_cache_admission not in {"always", "second", "adaptive"}:
             raise ValueError("invalid encoded cache admission")
+        if self.encoded_cache_scope not in {"shared", "local"}:
+            raise ValueError("invalid encoded cache scope")
         if self.process_training_order not in {"strict", "ready"}:
             raise ValueError("process_training_order must be strict or ready")
         if self.process_initial_active_workers > self.assembly_processes:
@@ -117,6 +138,8 @@ class OnlineTrainingConfig:
             )
         if self.process_start_method not in {"spawn", "forkserver"}:
             raise ValueError("process_start_method must be spawn or forkserver")
+        if self.process_progress_interval_s < 0:
+            raise ValueError("progress interval must be nonnegative")
 
     @property
     def num_layers(self) -> int:

@@ -81,6 +81,7 @@ class SqlTensorFrameSchemaBuilder:
         require_stypes: bool = False,
         cutoff: pd.Timestamp | None = None,
         cache_dir: str | Path | None = None,
+        numerical_buffer_bytes: int = 128 * 1024 * 1024,
     ) -> None:
         if min(scan_batch_size, inference_rows, text_embedding_dim) <= 0:
             raise ValueError("schema preparation sizes must be positive")
@@ -94,6 +95,9 @@ class SqlTensorFrameSchemaBuilder:
         self.require_stypes = require_stypes
         self.cache_dir = Path(cache_dir) if cache_dir is not None else None
         self.cache_hit = False
+        if numerical_buffer_bytes < 0:
+            raise ValueError("numerical_buffer_bytes must be non-negative")
+        self.numerical_buffer_bytes = numerical_buffer_bytes
         self._proposal: dict[str, dict[str, str]] | None = None
 
     def build(self) -> TensorFrameFeatureSchema:
@@ -128,10 +132,11 @@ class SqlTensorFrameSchemaBuilder:
                 inferred = {"__const__": stype.numerical}
                 stats: TableStats = {"__const__": _numerical_stats([1.0])}
             else:
+                numerical = self._table_numerical_stats(schema, columns, inferred)
                 stats = {
-                    column.name: self._column_stats(
-                        schema, column, inferred[column.name]
-                    )
+                    column.name: numerical[column.name]
+                    if column.name in numerical
+                    else self._column_stats(schema, column, inferred[column.name])
                     for column in columns
                 }
             tables[schema.name] = TableFeatureSchema(columns, inferred, stats)
@@ -144,7 +149,7 @@ class SqlTensorFrameSchemaBuilder:
         stat = database.stat()
         return artifact_key(
             {
-                "algorithm": "sql-tensorframe-schema-v1",
+                "algorithm": "sql-tensorframe-schema-v2",
                 "database": {
                     "path": str(database.resolve()),
                     "bytes": stat.st_size,
@@ -153,6 +158,7 @@ class SqlTensorFrameSchemaBuilder:
                 "cutoff": None if self.cutoff is None else str(self.cutoff),
                 "hidden_columns": sorted(list(item) for item in self.hidden_columns),
                 "scan_batch_size": self.scan_batch_size,
+                "numerical_buffer_bytes": self.numerical_buffer_bytes,
                 "inference_rows": self.inference_rows,
                 "text_embedding_dim": self.text_embedding_dim,
                 "encode_text": self.encode_text,
@@ -279,6 +285,83 @@ class SqlTensorFrameSchemaBuilder:
         for raw in self.reader.iter_query(query, batch_size=self.scan_batch_size):
             yield cast(pd.Series, decode_frame(raw, (column,))[column.name])
 
+    def _table_numerical_stats(
+        self,
+        table: TableSchema,
+        columns: tuple[ColumnSchema, ...],
+        inferred: Mapping[str, stype],
+    ) -> TableStats:
+        """Group exact numeric statistics when float64 columns fit the budget.
+
+        Only the numeric buffers are budgeted here; SQL/decoded chunks are
+        separately capped. A single oversized column uses the streaming path.
+        No sampling or dataset-specific thresholds are used.
+        """
+        numeric = [c for c in columns if inferred[c.name] == stype.numerical]
+        if not numeric or not self.numerical_buffer_bytes:
+            return {}
+        where = self._time_filter(table)
+        rows = int(
+            self.reader.read_query(
+                f"SELECT COUNT(*) FROM {quote_identifier(table.name)}{where}"
+            ).iloc[0, 0]
+        )
+        group_size = min(32, self.numerical_buffer_bytes // max(8 * rows, 8))
+        if group_size == 0:
+            return {}
+        result: TableStats = {}
+        for start in range(0, len(numeric), group_size):
+            group = numeric[start : start + group_size]
+            buffers = [np.empty(rows, dtype=np.float64) for _ in group]
+            counts = [0] * len(group)
+            projection = ", ".join(quote_identifier(c.name) for c in group)
+            query = f"SELECT {projection} FROM {quote_identifier(table.name)}{where}"
+            for raw in self.reader.iter_query(
+                query, batch_size=min(self.scan_batch_size, 8192)
+            ):
+                frame = decode_frame(raw, group)
+                for i, column in enumerate(group):
+                    values = pd.to_numeric(
+                        frame[column.name], errors="coerce"
+                    ).to_numpy(dtype="float64", na_value=np.nan)
+                    values = values[np.isfinite(values)]
+                    end = counts[i] + len(values)
+                    if end > rows:
+                        raise RuntimeError("Database changed during schema preparation")
+                    buffers[i][counts[i] : end] = values
+                    counts[i] = end
+            for i, column in enumerate(group):
+                values = buffers[i][: counts[i]]
+                if not len(values):
+                    result[column.name] = _numerical_stats([])
+                    continue
+                mean = float(values.mean())
+                # Bounded scratch space instead of np.std's full-column copy.
+                m2 = 0.0
+                for offset in range(0, len(values), 8192):
+                    delta = values[offset : offset + 8192] - mean
+                    m2 += float(np.dot(delta, delta))
+                positions = [(len(values) - 1) * q for q in (0, 0.25, 0.5, 0.75, 1)]
+                required = sorted(
+                    {int(p) for p in positions} | {math.ceil(p) for p in positions}
+                )
+                values.partition(required)
+                quantiles = []
+                for position in positions:
+                    lower, upper = math.floor(position), math.ceil(position)
+                    fraction = position - lower
+                    quantiles.append(
+                        float(values[lower] * (1 - fraction) + values[upper] * fraction)
+                    )
+                result[column.name] = {
+                    StatType.MEAN: mean,
+                    StatType.STD: math.sqrt(m2 / len(values)),
+                    StatType.QUANTILES: quantiles,
+                }
+            # Release the previous group's arrays before allocating the next.
+            del values, buffers
+        return result
+
     def _numerical_stats(
         self,
         table: TableSchema,
@@ -328,12 +411,11 @@ class SqlTensorFrameSchemaBuilder:
             values = cast(pd.Series, pd.to_numeric(series, errors="coerce")).to_numpy(
                 dtype="float64", copy=False
             )
-            for value in values:
-                if not np.isfinite(value):
-                    continue
-                if index in required:
-                    selected[index] = float(value)
-                index += 1
+            values = values[np.isfinite(values)]
+            for position in required:
+                if index <= position < index + len(values):
+                    selected[position] = float(values[position - index])
+            index += len(values)
         output = []
         for position in positions:
             lower, upper = math.floor(position), math.ceil(position)
@@ -407,12 +489,13 @@ class SqlTensorFrameSchemaBuilder:
                 pd.Series,
                 pd.to_datetime(series, errors="coerce", format="mixed"),
             )
-            for value in parsed:
-                if pd.isna(value):
-                    continue
-                if index in required:
-                    selected[index] = cast(pd.Timestamp, value)
-                index += 1
+            parsed = parsed.dropna()
+            for position in required:
+                if index <= position < index + len(parsed):
+                    selected[position] = cast(
+                        pd.Timestamp, parsed.iloc[position - index]
+                    )
+            index += len(parsed)
         if index != count:
             raise ValueError(f"Invalid timestamps in {table.name}.{column.name}")
 

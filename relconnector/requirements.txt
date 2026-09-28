@@ -1,7 +1,20 @@
-pandas>=2.0
+pandas==3.0.5
+numpy>=1.26
 
-# Install the matching torch and pyg-lib wheels documented in readme.md first.
-# Optional reader and local RelBench training support.
-connectorx>=0.4
-relbench[full]>=3.0,<4
-sentence-transformers>=5
+# GPU runtime (CUDA 12.8, NVIDIA driver 580+):
+#   uv pip install --python .venv/bin/python 'torch==2.7.1' \
+#     --index https://download.pytorch.org/whl/cu128
+#   uv pip install --python .venv/bin/python \
+#     'https://data.pyg.org/whl/torch-2.7.0%2Bcu128/pyg_lib-0.5.0%2Bpt27cu128-cp312-cp312-linux_x86_64.whl'
+
+connectorx==0.4.6
+pyarrow>=14
+relbench==3.0.1
+pytorch-frame==0.3.0
+torch-geometric==2.8.0
+sentence-transformers==5.1.2
+huggingface-hub>=0.20
+
+# Development tools
+ruff>=0.16
+pyright>=1.1.400

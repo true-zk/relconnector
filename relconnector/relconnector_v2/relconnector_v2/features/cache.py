@@ -12,6 +12,8 @@ import torch
 from torch_frame import TensorFrame
 from torch_frame.data.multi_tensor import _MultiTensor
 
+from .rows import gather_rows
+
 
 @dataclass(frozen=True)
 class FeatureBlockKey:
@@ -90,6 +92,7 @@ class EncodedFeatureCache:
         *,
         admission: str = "second",
         admission_entries: int = 250_000,
+        share_memory: bool = False,
     ) -> None:
         if max_bytes < 0 or admission_entries <= 0:
             raise ValueError("encoded cache limits must be valid")
@@ -100,6 +103,7 @@ class EncodedFeatureCache:
         self.max_bytes = max_bytes
         self.admission = admission
         self.admission_entries = admission_entries
+        self.share_memory = share_memory
         self._entries: OrderedDict[int, EncodedFeatureEntry] = OrderedDict()
         self._index: dict[str, dict[int, tuple[int, int]]] = {}
         self._seen: OrderedDict[tuple[str, int], None] = OrderedDict()
@@ -181,7 +185,9 @@ class EncodedFeatureCache:
                 self._add_epoch_locked(epoch, "admission_rejections", len(ids))
                 return None
             admitted_ids = node_ids[admitted_positions].clone()
-            admitted_frame = frame[admitted_positions]
+            admitted_frame = gather_rows(
+                frame, torch.tensor(admitted_positions, dtype=torch.long)
+            )
             charged = (
                 _tensor_frame_storage_bytes(admitted_frame)
                 + admitted_ids.untyped_storage().nbytes()
@@ -191,8 +197,17 @@ class EncodedFeatureCache:
                 self.oversized_rejections += 1
                 self._add_epoch_locked(epoch, "oversized_rejections", 1)
                 return None
+            if self.share_memory:
+                # RPC serialization moves private CPU storage into shared
+                # memory in place. Finish that move before any reader can
+                # retain a pointer to this entry's storage.
+                admitted_ids.share_memory_()
+                _share_tensor_frame(admitted_frame)
             while self._entries and self.current_bytes + charged > self.max_bytes:
                 self._evict_oldest(epoch)
+            # Eviction may remove the final entry for this same table and drop
+            # its index. Recreate it before publishing the new chunk.
+            table_index = self._index.setdefault(table, {})
             key = self._next_key
             self._next_key += 1
             entry = EncodedFeatureEntry(
@@ -304,6 +319,22 @@ class EncodedFeatureCache:
 
 
 _INDEX_BYTES_PER_ROW = sys.getsizeof(0) + sys.getsizeof((0, 0))
+
+
+def _share_tensor_frame(frame: TensorFrame) -> None:
+    def visit(value: object) -> None:
+        if isinstance(value, torch.Tensor):
+            value.share_memory_()
+        elif isinstance(value, _MultiTensor):
+            visit(value.values)
+            visit(value.offset)
+        elif isinstance(value, dict):
+            for item in value.values():
+                visit(item)
+
+    visit(frame.feat_dict)
+    if frame.y is not None:
+        visit(frame.y)
 
 
 def _tensor_frame_storage_bytes(frame: TensorFrame) -> int:

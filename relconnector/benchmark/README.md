@@ -81,7 +81,7 @@ report = recorder.report()
   --output benchmarks/latest-smoke.jsonl --overwrite
 ```
 
-latest 结果的 `diagnostics` 包含节点重复率、SQL amplification、raw/encoded
+v1 结果的 `diagnostics` 包含节点重复率、SQL amplification、raw/encoded
 cache、GloVe cache、按表/列操作计时、初始化 cache 命中、动态 window 决策，以及
 四层 queue 的等待时间与峰值占用。worker 会周期性写 progress snapshot，超时结果
 保留最后完成的 `BatchKey`、operation/cache/policy/queue 指标。异步结果的
@@ -93,7 +93,7 @@ cache、GloVe cache、按表/列操作计时、初始化 cache 命中、动态 w
 ## cache 基线与正确性版本
 
 `--implementation cache` 运行独立 `baseline.cache_baseline`；`vanilla` 保留逐批特征
-处理，`latest` 用于继续开发，`benchmark.runner` 运行全量 batch baseline。
+处理，v1（命令参数仍为 `--implementation latest`）用于继续开发，`benchmark.runner` 运行全量 batch baseline。
 所有训练入口要求数据库旁存在有效 `.stypes.json`。
 
 新结果包含 `experiment.correctness_version=relbench-correctness-v1`。

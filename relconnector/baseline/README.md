@@ -13,7 +13,7 @@ frozen baseline. Before each new optimization round, snapshot the current
 ## 正确性修订与 cache_baseline
 
 `cache_baseline/` 保存本轮之前的节点去重、四 batch 合并窗口及有界 raw/text cache
-策略，可通过 `benchmark.online_runner --implementation cache` 运行。它不导入 latest，
+策略，可通过 `benchmark.online_runner --implementation cache` 运行。它不导入 v1，
 有独立测量 adapter；四版本仅共享独立的 `relbench_compat` 数据正确性契约。
 
 用户已授权向所有基线回补 bug。`relbench-correctness-v1` 包含目标隐藏、官方 stype

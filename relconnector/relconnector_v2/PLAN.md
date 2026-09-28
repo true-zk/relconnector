@@ -12,7 +12,7 @@
 batch 而产生的空闲时间。缓存、预读和 assembly 结果允许跨 epoch 保留；epoch
 只约束训练语义和指标归属，不再作为数据准备边界。
 
-本计划只修改 latest，`batch_baseline`、`vanilla_baseline` 和
+本计划只修改 v1，`batch_baseline`、`vanilla_baseline` 和
 `cache_baseline` 继续冻结。
 
 ## 2. 当前证据
@@ -21,9 +21,9 @@ batch 而产生的空闲时间。缓存、预读和 assembly 结果允许跨 epo
 
 | workload | steps | wall time | batch assembly | train step | ready queue 等待 |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Arxiv latest 完整 1 epoch | 1044 | 2855s | 2746s | 290s | 2516s |
-| Salt latest 2x50 | 100 | 141s | 261 CPU-s | 42s | 99s |
-| Ratebeer latest 2x20 | 40 | 53s | 81 CPU-s | 14s | 39s |
+| Arxiv v1 完整 1 epoch | 1044 | 2855s | 2746s | 290s | 2516s |
+| Salt v1 2x50 | 100 | 141s | 261 CPU-s | 42s | 99s |
+| Ratebeer v1 2x20 | 40 | 53s | 81 CPU-s | 14s | 39s |
 
 异步阶段会重叠，因此 operation time 不能直接相加；但 ready queue 等待接近
 wall time，同时 plan queue 长时间阻塞，已经构成明确的生产者快、Assembly 慢、
@@ -130,7 +130,9 @@ mapper 和 GloVe。文本内容缓存作为二级优化：
 - 固定宽 300 维向量放共享 slab；
 - normalized text 索引可先按 worker 分片；
 - 只有在 encoded cache miss 较高且文本跨节点重复明显时，才升级为全局共享索引；
-- 不恢复硬盘 embedding cache。
+- 大型、低内存命中率且文本编码耗时明显的任务启用持久化 embedding
+  cache；小型任务继续只用内存缓存。磁盘 key 同时包含数据库版本、模型身份、
+  编码路径和规范化文本，防止跨版本误用。
 
 ### 5.3 生命周期和淘汰
 
@@ -272,7 +274,7 @@ spawn。调度器每个控制周期读取：
 ### Stage 0：冻结基线和补齐遥测
 
 - 等当前正式矩阵完成，或在独立 worktree 中开发；
-- 记录 current latest 的 queue wait、GPU idle、assembly service rate；
+- 记录 current v1 的 queue wait、GPU idle、assembly service rate；
 - 为 IPC bytes、shared-memory allocation 和 cache reservation 增加 telemetry；
 - 不改变训练行为。
 
@@ -349,7 +351,7 @@ Go/No-Go：Arxiv 4 worker 相比 1 worker assembly throughput 至少提升 1.8x�
 
 ### 正确性
 
-- strict 模式与 current latest 的 batch feature tensor 逐值一致；
+- strict 模式与 current v1 的 batch feature tensor 逐值一致；
 - strict 模式固定输入 loss 满足现有正确性阈值；
 - ready 模式无 batch 丢失、重复或跨 epoch 提前训练；
 - ready 模式 3 seeds 最终指标无显著退化；
@@ -358,7 +360,7 @@ Go/No-Go：Arxiv 4 worker 相比 1 worker assembly throughput 至少提升 1.8x�
 
 ### 性能
 
-- Arxiv process 4 相比 current latest wall time 改善至少 1.8x；
+- Arxiv process 4 相比 current v1 wall time 改善至少 1.8x；
 - Salt 改善至少 1.3x；
 - Ratebeer 改善至少 1.2x；
 - feature-bound workload 稳态 GPU utilization 目标不低于 80%；
@@ -367,9 +369,9 @@ Go/No-Go：Arxiv 4 worker 相比 1 worker assembly throughput 至少提升 1.8x�
 
 ### 资源
 
-- GPU 显存峰值相对 current latest 增长不超过 5%；
+- GPU 显存峰值相对 current v1 增长不超过 5%；
 - 共享 cache 和 ready pool 均严格遵守 byte budget；
-- 默认配置主存峰值不超过 current latest 的 1.5x；
+- 默认配置主存峰值不超过 current v1 的 1.5x；
 - 无共享内存、进程、文件描述符泄漏。
 
 ## 14. 回退边界
@@ -379,7 +381,7 @@ Go/No-Go：Arxiv 4 worker 相比 1 worker assembly throughput 至少提升 1.8x�
 - shared cache 可独立关闭；
 - lightweight TensorFrame payload 可回退现有 converter；
 - cross-epoch prefetch 可设为 0；
-- 任一新路径失败时只回退 latest，不改三个冻结 baseline。
+- 任一新路径失败时只回退 v1，不改三个冻结 baseline。
 
 ## 15. 决策顺序
 

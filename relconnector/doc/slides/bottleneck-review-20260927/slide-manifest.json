@@ -1,0 +1,97 @@
+[
+  {
+    "page": 1,
+    "title": "从特征供给瓶颈，到自适应在线训练",
+    "notes": "重组旧稿，更新至十任务完成及最新Event/Trial复测。所有历史对比均保留缓存与版本差异。性能图不含Batch；内存图按用户要求包含Batch。\n\n证据与口径：\ndoc/v2-dataset-performance-review-20260927.md"
+  },
+  {
+    "page": 2,
+    "title": "按需读取省下内存，却把特征生产放进训练循环",
+    "notes": "历史Vanilla五项在4小时超时。不要把Vanilla描述为完全没有优化；旧SQL修复已回补到当前代码，历史成绩代表当时快照。\n\n证据与口径：\ndoc/gpu-feature-optimization-experiment.md\ndoc/optimization-evolution-report-20260926.md §2–3"
+  },
+  {
+    "page": 3,
+    "title": "把重复请求合并，只对缺失部分生产特征",
+    "notes": "去重只减少特征生产，重复训练位置通过inverse恢复。文本快路径保留GloVe计算语义；不兼容时回退。初始化持久化缓存并非v2独有。\n\n证据与口径：\ndoc/optimization-evolution-report-20260926.md §4–5"
+  },
+  {
+    "page": 4,
+    "title": "重复结构不同，同一缓存策略的收益就不同",
+    "notes": "Salt约4.99×，Stack约1.22×。历史阶段/worker计时会重叠，不求和为wall。此处仅解释v1在不同数据结构上的收益差异。\n\n证据与口径：\ndoc/gpu-feature-optimization-experiment.md"
+  },
+  {
+    "page": 5,
+    "title": "命中缓存以后，访问成本仍可能成为瓶颈",
+    "notes": "本页是诊断归纳，不宣称每个问题只有单一原因。Ratebeer另有共享存储发布竞争，属于正确性问题，在后面独立说明。\n\n证据与口径：\ndoc/v2-full-matrix-20260925.md\ndoc/v2-hm-regression-20260925.md"
+  },
+  {
+    "page": 6,
+    "title": "采样、特征组装、GPU 训练分进程执行",
+    "notes": "epoch gate限制当前轮训练，下一轮可预取；特征窗口不能跨epoch混合。活跃worker数可根据供给状态调整，但预先spawn的进程暂停不等于归还内存。图拓扑仍常驻。\n\n证据与口径：\nrelconnector_v2/relconnector_v2/runtime/process_pipeline.py\nrelconnector_v2/relconnector_v2/process_api.py"
+  },
+  {
+    "page": 7,
+    "title": "按可观测信号决策，而不是按数据集名称分支",
+    "notes": "HM本地4GiB是验证矩阵显式配置，不称为已实现自动选择。磁盘和本地索引是独立策略，可能分别开关。Ratebeer磁盘策略未激活，其持续编码仍是待优化点。\n\n证据与口径：\nrelconnector_v2/relconnector_v2/features/adaptive_text_index.py\nrelconnector_v2/relconnector_v2/features/disk_text.py\ndoc/v2-hm-regression-20260925.md"
+  },
+  {
+    "page": 8,
+    "title": "重复命中时，只查本地槽位索引",
+    "notes": "每worker索引元数据预算32MiB，LRU淘汰；激活后两个窗口预热，反复失效延长冷却，最多32个窗口。Salt端到端3.51×包含初始化状态差异；查询计时是并行累计。\n\n证据与口径：\ndoc/v2-salt-regression-20260926.md"
+  },
+  {
+    "page": 9,
+    "title": "把跨轮可复用的 embedding 留在磁盘",
+    "notes": "Arxiv矩阵模型输入184724/1316。Trial371.80秒为热初始化/文本缓存，不能全部归因于代码优化。Ratebeer内存累计命中约88.67%，未触发低命中门槛，第二轮仍有大量编码。\n\n证据与口径：\ndoc/v2-full-matrix-20260925-final.md\ndoc/v2-trial-rerun-20260927.md"
+  },
+  {
+    "page": 10,
+    "title": "只传需要的行，避免命中后搬运整块特征",
+    "notes": "旧shared2GiB vs local总4GiB并非等容量单因素对照；报告另有同预算短测。pipeline快2.62×，端到端快2.87×包含热初始化收益。\n\n证据与口径：\ndoc/v2-hm-regression-20260925.md"
+  },
+  {
+    "page": 11,
+    "title": "缓存能命中，还要能长期稳定运行",
+    "notes": "写阶段预算参考4倍索引、通常64MiB至4GiB并受空闲空间1/16约束。连续两窗口高命中、低WAL增长进入读阶段，上限512MiB；命中下降或增长回升退出。Amazon约60GB WAL已收回；不能把稳定性修复与性能贡献混为单一倍率。\n\n证据与口径：\ndoc/v2-stack-regression-20260926.md\ndoc/v2-amazon-regression-20260926.md"
+  },
+  {
+    "page": 12,
+    "title": "根据行数与内存预算，自动合并数值列扫描",
+    "notes": "空应用缓存对照，不清操作系统文件缓存。预算只针对数值数组，非进程RSS上限。schema缓存版本更新，旧schema需重算；图缓存可复用。新旧完整冷测分别2164.0016/606.0092秒。\n\n证据与口径：\ndoc/v2-initialization-optimization-20260927.md\nbenchmarks/v2-event-init-optimized-20260927/result.json"
+  },
+  {
+    "page": 13,
+    "title": "Ratebeer：先修复发布竞争，再评价吞吐",
+    "notes": "Ratebeer完整结果15444.93秒，包含CPU类别检查开销；20k批为截断工作量。最终模型输入约20245311/20503129，ready等待11389.19秒。\n\n证据与口径：\ndoc/v2-ratebeer-regression-20260926.md"
+  },
+  {
+    "page": 14,
+    "title": "十项已有有效成绩，但并非统一最终版本重测",
+    "notes": "所有结果来自原始JSONL并核对两轮步数和有限loss。历史数据来自报告，旧JSONL不在工作区。F1最新28.11秒而非挑旧26.57最低值；不要声称每次新改动都让每个任务更快。\n\n证据与口径：\ndoc/v2-dataset-performance-review-20260927.md\nbenchmarks/v2-performance-review-20260927/comparison.json"
+  },
+  {
+    "page": 15,
+    "title": "大规模任务：对比 Vanilla、v1 与 v2",
+    "notes": "图中无Batch版本。Vanilla超时值=14400/计划完整epoch批数，仅是完整epoch平均秒/batch下界，非实测完成值。Ratebeer v1=14400/15686，v2每轮限10000批。Arxiv/Amazon已有文本缓存；版本和冷热不配对。\n\n证据与口径：\ndoc/gpu-feature-optimization-experiment.md\nbenchmarks/v2-performance-review-20260927/comparison.json"
+  },
+  {
+    "page": 16,
+    "title": "缓存与初始化影响，必须和吞吐一起解释",
+    "notes": "Event38.77秒/76批，Trial371.80秒/918批。Event的49.83×跨实验单位batch比值不是冷初始化加速，也不是训练算子加速。本图刻意不以该倍率做宣传标题。Salt/Stack也有各自缓存和代码修订条件。\n\n证据与口径：\ndoc/v2-dataset-performance-review-20260927.md\ndoc/v2-initialization-optimization-20260927.md"
+  },
+  {
+    "page": 17,
+    "title": "用局部对照解释收益，而非只看版本排名",
+    "notes": "HM作用域和容量不同，Salt初始化可能不同，Stack仅短测，EventOS页缓存不清。准确区分测量边界。所有worker累计计时不能直接相加为wall。\n\n证据与口径：\ndoc/v2-hm-regression-20260925.md\ndoc/v2-salt-regression-20260926.md\ndoc/v2-stack-regression-20260926.md\ndoc/v2-trial-rerun-20260927.md"
+  },
+  {
+    "page": 18,
+    "title": "全量物化的内存代价明显；v2 总内存尚待补测",
+    "notes": "历史RSS（GiB）来自gpu-feature-optimization-experiment.md十库汇总；超时任务RSS只是截至超时的峰值。v2取与耗时图相同JSONL的peak_rss_mb/1024，其源码是RUSAGE_SELF。非同口径四版本总内存比较；使用斜线并明确标注，不进行内存排名。完整数据见rss-data.csv。\n\n证据与口径：\ndoc/gpu-feature-optimization-experiment.md\nrelconnector_v2/relconnector_v2/benchmark.py\nrss-data.csv"
+  },
+  {
+    "page": 19,
+    "title": "减少常驻特征，还需要覆盖整个进程树",
+    "notes": "不直接相加进程RSS，因为共享页会重复计算。v2默认ready队列16GiB为上限而非实际占用，也非全系统内存承诺。通用启发式已实现，但HM本地配置不是自动学习，所有十库尚未用新统计代码重测。\n\n证据与口径：\ndoc/optimization-evolution-report-20260926.md §9\ndoc/v2-dataset-performance-review-20260927.md"
+  }
+]

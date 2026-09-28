@@ -1,9 +1,9 @@
 # cache_baseline 冻结与正确性修复计划
 
-本轮先冻结当前 latest 为独立 cache_baseline，再向四版本回补正确性问题。
+本轮先冻结当前 v1 为独立 cache_baseline，再向四版本回补正确性问题。
 用户已授权修复旧基线；动态策略算法、性能并行化留待后续。
 
-1. 修复前源码及 SHA256 清单存入 baseline/archives，复制 latest 并改为独立导入。
+1. 修复前源码及 SHA256 清单存入 baseline/archives，复制 v1 并改为独立导入。
 2. 修复 autocomplete 隐藏目标列：兼顾官方 remove_columns，保留 forecast 合法特征；
    修复离线更新工具和已有 catalog。
 3. 固定种子、表顺序、输入视图、依赖版本，以有界 SQL 抽样固化官方 stype proposal。

@@ -1,0 +1,220 @@
+{
+  "dataset": "rel-arxiv",
+  "path": "/home/zk/relconnector/relconnector/data/relbench/rel-arxiv.sqlite",
+  "sqlite_bytes": 643686400,
+  "metadata": {
+    "catalog_version": "1",
+    "dataset_name": "rel-arxiv",
+    "source": "relbench",
+    "source_spec": "stanford-star/relbench-v2-extra/rel-arxiv",
+    "relbench_version": "3.0.1",
+    "source_revision": "",
+    "created_at": "2026-09-24T13:46:25.173266+00:00",
+    "val_timestamp": "2022-01-01T00:00:00",
+    "test_timestamp": "2023-01-01T00:00:00"
+  },
+  "snapshot": "071cb21e698ad91537d43ca6282411a6d0e78256",
+  "source_repo": "stanford-star/relbench-v2-extra",
+  "cutoff": "2023-01-01T00:00:00",
+  "stype_dependencies": {
+    "relbench": "3.0.1",
+    "pytorch-frame": "0.3.0",
+    "pandas": "3.0.5",
+    "numpy": "2.5.3"
+  },
+  "tables": [
+    {
+      "table": "authors",
+      "rows": 143691,
+      "cutoff_rows": 143691,
+      "columns": 3,
+      "sqlite_columns": 3,
+      "text_columns": [
+        "Name",
+        "ORCID"
+      ],
+      "sql_text_columns": [
+        "Name",
+        "ORCID"
+      ],
+      "stypes": {
+        "Author_ID": "numerical",
+        "Name": "text_embedded",
+        "ORCID": "text_embedded"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": null,
+      "time_bounds": null,
+      "parquet_bytes": 4449181,
+      "parquet_rows": 143691,
+      "parquet_columns": 3
+    },
+    {
+      "table": "categories",
+      "rows": 53,
+      "cutoff_rows": 53,
+      "columns": 2,
+      "sqlite_columns": 2,
+      "text_columns": [],
+      "sql_text_columns": [],
+      "stypes": {
+        "Category_ID": "numerical",
+        "Category": "numerical"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": null,
+      "time_bounds": null,
+      "parquet_bytes": 2327,
+      "parquet_rows": 53,
+      "parquet_columns": 2
+    },
+    {
+      "table": "citations",
+      "rows": 1595687,
+      "cutoff_rows": 1223361,
+      "columns": 3,
+      "sqlite_columns": 4,
+      "text_columns": [],
+      "sql_text_columns": [
+        "Submission_Date"
+      ],
+      "stypes": {
+        "Paper_ID": "numerical",
+        "References_Paper_ID": "numerical",
+        "Submission_Date": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "Submission_Date",
+      "time_bounds": [
+        "2018-01-01T00:00:00",
+        "2023-12-31T00:00:00"
+      ],
+      "parquet_bytes": 6442385,
+      "parquet_rows": 1595687,
+      "parquet_columns": 3
+    },
+    {
+      "table": "paperAuthors",
+      "rows": 616585,
+      "cutoff_rows": 452251,
+      "columns": 3,
+      "sqlite_columns": 4,
+      "text_columns": [],
+      "sql_text_columns": [
+        "Submission_Date"
+      ],
+      "stypes": {
+        "Paper_ID": "numerical",
+        "Author_ID": "numerical",
+        "Submission_Date": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "Submission_Date",
+      "time_bounds": [
+        "2018-01-01T00:00:00",
+        "2023-12-31T00:00:00"
+      ],
+      "parquet_bytes": 3367953,
+      "parquet_rows": 616585,
+      "parquet_columns": 3
+    },
+    {
+      "table": "paperCategories",
+      "rows": 155061,
+      "cutoff_rows": 133060,
+      "columns": 3,
+      "sqlite_columns": 4,
+      "text_columns": [],
+      "sql_text_columns": [
+        "Submission_Date"
+      ],
+      "stypes": {
+        "Paper_ID": "numerical",
+        "Category_ID": "numerical",
+        "Submission_Date": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "Submission_Date",
+      "time_bounds": [
+        "2018-01-01T00:00:00",
+        "2023-12-31T00:00:00"
+      ],
+      "parquet_bytes": 898799,
+      "parquet_rows": 155061,
+      "parquet_columns": 3
+    },
+    {
+      "table": "papers",
+      "rows": 222769,
+      "cutoff_rows": 193696,
+      "columns": 7,
+      "sqlite_columns": 7,
+      "text_columns": [
+        "arXiv_Code",
+        "Title",
+        "Abstract",
+        "DOI"
+      ],
+      "sql_text_columns": [
+        "arXiv_Code",
+        "Title",
+        "Abstract",
+        "Submission_Date",
+        "DOI"
+      ],
+      "stypes": {
+        "Paper_ID": "numerical",
+        "arXiv_Code": "text_embedded",
+        "Title": "text_embedded",
+        "Abstract": "text_embedded",
+        "Submission_Date": "timestamp",
+        "DOI": "text_embedded",
+        "Primary_Category_ID": "numerical"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "Submission_Date",
+      "time_bounds": [
+        "2018-01-01T00:00:00",
+        "2023-12-31T00:00:00"
+      ],
+      "parquet_bytes": 158025410,
+      "parquet_rows": 222769,
+      "parquet_columns": 7
+    }
+  ],
+  "tasks": [
+    {
+      "table": "target_author_category",
+      "rows": 289439,
+      "columns": 5
+    },
+    {
+      "table": "target_author_publication",
+      "rows": 289439,
+      "columns": 5
+    },
+    {
+      "table": "target_paper_citation",
+      "rows": 883774,
+      "columns": 5
+    },
+    {
+      "table": "target_paper_paper_cocitation",
+      "rows": 399631,
+      "columns": 5
+    }
+  ],
+  "rows": 2733846,
+  "cutoff_rows": 2146112,
+  "columns": 21,
+  "sqlite_columns": 24,
+  "parquet_bytes": 173186055,
+  "text_count": 6,
+  "sql_text_count": 10
+}

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import queue
+import sys
 import threading
 import time
 import traceback
@@ -62,6 +64,8 @@ class ProcessRuntimeConfig:
     start_method: Literal["spawn", "forkserver"] = "spawn"
     queue_items: int = 64
     poll_interval_s: float = 0.1
+    progress_interval_s: float = 0.0
+    diagnostics_timeout_s: float = 300.0
 
     def __post_init__(self) -> None:
         positive = (
@@ -79,6 +83,7 @@ class ProcessRuntimeConfig:
             any(value <= 0 for value in positive)
             or self.poll_interval_s <= 0
             or self.worker_scale_interval_s <= 0
+            or self.diagnostics_timeout_s <= 0
         ):
             raise ValueError("process runtime limits must be positive")
         if self.initial_active_processes > self.assembly_processes:
@@ -87,6 +92,8 @@ class ProcessRuntimeConfig:
             )
         if self.training_order not in {"strict", "ready"}:
             raise ValueError("training_order must be strict or ready")
+        if self.progress_interval_s < 0:
+            raise ValueError("progress interval must be nonnegative")
 
 
 @dataclass(frozen=True)
@@ -97,6 +104,12 @@ class _SizedItem:
 
 @dataclass(frozen=True)
 class _EpochEnd:
+    epoch: int
+    batches: int
+
+
+@dataclass(frozen=True)
+class _EpochSampled:
     epoch: int
     batches: int
 
@@ -142,6 +155,23 @@ class _ProcessFailure:
     worker: int | None
     message: str
     traceback: str
+
+
+class _ProcessErrorQueue:
+    """Send failures without starting a feeder thread during resource exhaustion."""
+
+    def __init__(self, context: Any) -> None:
+        self._queue = context.SimpleQueue()
+
+    def put(self, failure: _ProcessFailure) -> None:
+        self._queue.put(failure)
+
+    def get_nowait(self) -> _ProcessFailure:
+        # Only the trainer consumes failures; writers cannot make a nonempty
+        # queue empty between this check and get().
+        if self._queue.empty():
+            raise queue.Empty
+        return cast(_ProcessFailure, self._queue.get())
 
 
 class _SharedByteBudget:
@@ -316,7 +346,7 @@ class ProcessPipelineExecutor:
             self.config.poll_interval_s,
         )
         control_queue = context.Queue()
-        error_queue = context.Queue()
+        error_queue = _ProcessErrorQueue(context)
         inflight = context.BoundedSemaphore(self.config.max_inflight_windows)
         worker_gate = _ActiveWorkerGate(
             context,
@@ -387,6 +417,12 @@ class ProcessPipelineExecutor:
                 seed_queue.put(None, 0, stop)
             except BaseException as exc:  # noqa: BLE001
                 feeder_errors.append(exc)
+                # The trainer must see this before run()'s final cleanup. A
+                # stop event alone leaves it waiting for batches while every
+                # child waits for release_processes, hiding the seed exception.
+                error_queue.put(
+                    _ProcessFailure("seed", None, str(exc), traceback.format_exc())
+                )
                 stop.set()
                 seed_queue.wake_all()
                 plan_queue.wake_all()
@@ -476,7 +512,10 @@ class ProcessPipelineExecutor:
         examples = 0
         weighted_loss = 0.0
         ready_wait_s = 0.0
+        epoch_ready_wait_s: dict[int, float] = defaultdict(float)
         last_scale = started
+        last_progress = started
+        last_training = started
 
         def rebalance(*, starved: bool) -> None:
             nonlocal last_scale
@@ -492,23 +531,49 @@ class ProcessPipelineExecutor:
             if starved and plan["current_bytes"] > 0 and active < gate["maximum"]:
                 worker_gate.set_active(active + 1)
                 last_scale = now
-            elif (
-                ready["current_bytes"] > ready["max_bytes"] * 0.75
-                and active > 1
-            ):
+            elif ready["current_bytes"] > ready["max_bytes"] * 0.75 and active > 1:
                 worker_gate.set_active(active - 1)
                 last_scale = now
 
         while total_expected is None or steps < total_expected:
+            now = time.perf_counter()
+            if (
+                self.config.progress_interval_s
+                and now - last_progress >= self.config.progress_interval_s
+            ):
+                print(
+                    "[v2 progress] "
+                    + json.dumps(
+                        {
+                            "elapsed_s": round(now - started, 1),
+                            "steps": steps,
+                            "epoch": current_epoch,
+                            "epoch_steps": dict(epoch_trained),
+                            "epoch_expected": epoch_expected,
+                            "pending_batches": len(pending),
+                            "inflight_windows": len(window_remaining),
+                            "assembly_finished": sum(
+                                report.get("stage") == "assembly"
+                                for report in worker_reports
+                            ),
+                            "sampling_finished": total_expected is not None,
+                            "worker_gate": worker_gate.snapshot(),
+                            "plan_queue": plan_queue.snapshot(),
+                            "ready_queue": ready_queue.snapshot(),
+                            "seconds_since_last_batch": round(now - last_training, 1),
+                        }
+                    ),
+                    file=sys.stderr,
+                    flush=True,
+                )
+                last_progress = now
             self._drain_control(
                 control_queue,
                 epoch_expected,
                 worker_reports,
             )
             sampling_reports = [
-                report
-                for report in worker_reports
-                if report.get("stage") == "sampling"
+                report for report in worker_reports if report.get("stage") == "sampling"
             ]
             if sampling_reports:
                 total_expected = cast(int, sampling_reports[-1]["total_batches"])
@@ -522,6 +587,8 @@ class ProcessPipelineExecutor:
             ):
                 current_epoch += 1
             self._raise_process_error(error_queue, processes)
+            if total_expected is not None and steps == total_expected:
+                break
             candidate = _select_ready(
                 pending,
                 ready_by_epoch,
@@ -534,10 +601,30 @@ class ProcessPipelineExecutor:
                 try:
                     queued = ready_queue.get(timeout=self.config.poll_interval_s)
                 except queue.Empty:
-                    ready_wait_s += time.perf_counter() - wait_started
+                    waited = time.perf_counter() - wait_started
+                    ready_wait_s += waited
+                    epoch_ready_wait_s[current_epoch] += waited
+                    finished = [
+                        report for report in worker_reports
+                        if report.get("stage") == "assembly"
+                    ]
+                    if (
+                        len(finished) == self.config.assembly_processes
+                        and time.perf_counter() - last_training > 5.0
+                        and ready_queue.snapshot()["current_bytes"] == 0
+                    ):
+                        raise RuntimeError(
+                            "all assembly workers finished before training completed: "
+                            f"steps={steps}, expected={total_expected}, "
+                            f"epoch_expected={epoch_expected}, pending={len(pending)}, "
+                            f"inflight_windows={window_remaining}, "
+                            f"assembled={[report['batches'] for report in finished]}"
+                        )
                     rebalance(starved=True)
                     continue
-                ready_wait_s += time.perf_counter() - wait_started
+                waited = time.perf_counter() - wait_started
+                ready_wait_s += waited
+                epoch_ready_wait_s[current_epoch] += waited
                 ready_queue.release(queued)
                 item = cast(_ReadyBatch, queued.payload)
                 pending[item.sequence] = item
@@ -552,9 +639,19 @@ class ProcessPipelineExecutor:
                 ready_by_epoch.pop(candidate.batch.key.epoch, None)
             epoch = candidate.batch.key.epoch
             epoch_started.setdefault(epoch, time.perf_counter())
-            with TORCH_RNG_LOCK:
-                train_result = trainer.train_step(candidate.batch)
+            try:
+                with TORCH_RNG_LOCK:
+                    train_result = trainer.train_step(candidate.batch)
+            except Exception as error:
+                # Ready-order execution may differ from the progress counter;
+                # preserve the actual seed key for deterministic reproduction.
+                raise RuntimeError(
+                    f"training failed at epoch={epoch}, "
+                    f"batch={candidate.batch.key.batch}, "
+                    f"sequence={candidate.sequence}, completed_steps={steps}"
+                ) from error
             now = time.perf_counter()
+            last_training = now
             epoch_finished[epoch] = now
             steps += 1
             examples += train_result.examples
@@ -590,14 +687,35 @@ class ProcessPipelineExecutor:
                     "ready_queue": ready_queue.snapshot(),
                 }
 
-        report_deadline = time.monotonic() + 10
-        while (
-            sum(report.get("stage") == "assembly" for report in worker_reports)
-            < self.config.assembly_processes
-            and time.monotonic() < report_deadline
-        ):
+        report_deadline = time.monotonic() + self.config.diagnostics_timeout_s
+        last_report_progress = time.monotonic()
+        while True:
             self._drain_control(control_queue, epoch_expected, worker_reports)
             self._raise_process_error(error_queue, processes)
+            reported = {
+                report["worker"] for report in worker_reports
+                if report.get("stage") == "assembly"
+            }
+            if len(reported) == self.config.assembly_processes:
+                break
+            now = time.monotonic()
+            if now >= report_deadline:
+                missing = set(range(self.config.assembly_processes)) - reported
+                raise RuntimeError(
+                    "timed out collecting assembly diagnostics after training: "
+                    f"steps={steps}, missing_workers={sorted(missing)}"
+                )
+            if (self.config.progress_interval_s
+                    and now - last_report_progress >= self.config.progress_interval_s):
+                print(
+                    "[v2 progress] " + json.dumps({
+                        "phase": "collecting_diagnostics", "steps": steps,
+                        "elapsed_s": round(time.perf_counter() - started, 1),
+                        "epoch_steps": dict(epoch_trained),
+                        "assembly_finished": len(reported),
+                    }), file=sys.stderr, flush=True,
+                )
+                last_report_progress = now
             time.sleep(self.config.poll_interval_s)
 
         records = []
@@ -614,6 +732,7 @@ class ProcessPipelineExecutor:
                     "mean_loss": epoch_weighted_loss[epoch]
                     / max(epoch_examples[epoch], 1),
                     "duration_s": duration,
+                    "ready_wait_s": epoch_ready_wait_s[epoch],
                     "batches_per_second": count / duration if duration else 0.0,
                 }
             )
@@ -657,6 +776,8 @@ class ProcessPipelineExecutor:
                         "epoch_batches": message.epoch_batches,
                     }
                 )
+            elif isinstance(message, _EpochSampled):
+                epoch_expected[message.epoch] = message.batches
             elif isinstance(message, _WorkerFinished):
                 reports.append(
                     {
@@ -676,16 +797,16 @@ class ProcessPipelineExecutor:
                 f"{failure.stage} worker {failure.worker} failed: "
                 f"{failure.message}\n{failure.traceback}"
             )
-        failed = [
-            process
-            for process in processes
-            if process.exitcode not in (None, 0)
-        ]
+        failed = [process for process in processes if process.exitcode not in (None, 0)]
         if failed:
             details = ", ".join(
                 f"{process.name}={process.exitcode}" for process in failed
             )
-            raise RuntimeError(f"process pipeline worker exited unexpectedly: {details}")
+            raise RuntimeError(
+                f"process pipeline worker exited unexpectedly: {details}"
+            )
+
+
 def _sample_process_main(
     sampler: Sampler,
     seed_queue: _ProcessByteQueue,
@@ -735,8 +856,13 @@ def _sample_process_main(
                 break
             if isinstance(message, _EpochEnd):
                 epoch_batches[message.epoch] = message.batches
-                if not config.cross_epoch_prefetch and not flush():
+                # Keep windows epoch-homogeneous. The next epoch may still be
+                # prefetched as a separate inflight window, but mixing epochs
+                # in one window can deadlock the trainer's epoch gate before
+                # the final sampling report is available.
+                if not flush():
                     return
+                control_queue.put(_EpochSampled(message.epoch, message.batches))
                 continue
             seed = cast(SeedBatch, message)
             plan = sampler.sample(seed)
@@ -782,6 +908,7 @@ def _assembly_process_main(
     worker: ProcessAssemblyWorker | None = None
     windows = 0
     batches = 0
+    exit_reason = "cancelled"
     try:
         torch.set_num_threads(1)
         worker = factory(worker_index)
@@ -798,6 +925,7 @@ def _assembly_process_main(
                 continue
             plan_queue.release(queued)
             if queued.payload is None:
+                exit_reason = "sentinel"
                 break
             window = cast(_PlanWindow, queued.payload)
             plans = [item.plan for item in window.plans]
@@ -826,6 +954,7 @@ def _assembly_process_main(
             )
         )
     except BaseException as exc:  # noqa: BLE001
+        exit_reason = f"error: {exc!r}"
         error_queue.put(
             _ProcessFailure(
                 "assembly",
@@ -838,6 +967,15 @@ def _assembly_process_main(
         plan_queue.wake_all()
         ready_queue.wake_all()
     finally:
+        if config.progress_interval_s:
+            print(
+                "[v2 assembly stopped] "
+                + json.dumps({"worker": worker_index, "reason": exit_reason,
+                              "windows": windows, "batches": batches,
+                              "unhandled_exception": repr(sys.exception())}),
+                file=sys.stderr,
+                flush=True,
+            )
         if worker is not None:
             worker.close()
         release_processes.wait()

@@ -6,11 +6,12 @@ import argparse
 import json
 import resource
 import time
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 
 from .config import OnlineTrainingConfig
 from .process_api import MultiprocessRelBenchModel
+from .training.validation import ValidatedTrainer
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -37,7 +38,18 @@ def main(argv: list[str] | None = None) -> int:
         feature_window_batches=args.window_batches,
         feature_window_bytes=args.window_mb * 1024 * 1024,
         text_embedding_cache_bytes=args.text_cache_mb * 1024 * 1024,
+        text_cache_scope=args.text_cache_scope,
+        text_batch_size=args.text_batch_size,
+        text_execution=args.text_execution,
+        disk_text_cache_mode=args.disk_text_cache_mode,
+        disk_text_cache_min_database_bytes=(
+            args.disk_text_cache_min_database_mb * 1024 * 1024
+        ),
+        disk_text_cache_min_model_inputs=(args.disk_text_cache_min_model_inputs),
+        disk_text_cache_max_memory_hit_rate=(args.disk_text_cache_max_memory_hit_rate),
+        disk_text_cache_min_model_time_s=(args.disk_text_cache_min_model_time_s),
         encoded_feature_cache_bytes=args.encoded_cache_mb * 1024 * 1024,
+        encoded_cache_scope=args.encoded_cache_scope,
         assembly_processes=args.assembly_processes,
         process_initial_active_workers=(
             args.initial_active_processes
@@ -45,9 +57,11 @@ def main(argv: list[str] | None = None) -> int:
             else args.assembly_processes
         ),
         process_adaptive_workers=not args.no_adaptive_workers,
+        process_progress_interval_s=args.progress_interval_s,
         process_training_order=args.training_order,
         cross_epoch_prefetch=not args.no_cross_epoch_prefetch,
         process_max_inflight_windows=args.max_inflight_windows,
+        cache_dir=(None if args.cache_dir is None else str(args.cache_dir)),
         executor="process",
     )
     model = MultiprocessRelBenchModel(
@@ -58,6 +72,22 @@ def main(argv: list[str] | None = None) -> int:
         config=config,
     )
     started = time.perf_counter()
+    validator = None
+    if args.validate_categorical_inputs:
+        session = model.prepare()
+        validator = ValidatedTrainer(
+            session.components.trainer,
+            session.feature_schema,
+            (args.output.parent if args.output is not None else Path("benchmarks"))
+            / "failed-inputs",
+        )
+        model.session = replace(
+            session, components=replace(session.components, trainer=validator)
+        )
+        print(
+            "[v2 validation] checking categorical inputs; failed batches: "
+            f"{validator.diagnostic_dir.resolve()}", flush=True,
+        )
     result = model.train()
     duration = time.perf_counter() - started
     payload = {
@@ -72,6 +102,11 @@ def main(argv: list[str] | None = None) -> int:
         "config": asdict(config),
         "pipeline": result.pipeline,
     }
+    if validator is not None:
+        payload["categorical_input_validation"] = {
+            "batches": validator.batches,
+            "duration_s": validator.validation_s,
+        }
     encoded = json.dumps(payload, ensure_ascii=True)
     if args.output is None:
         print(encoded)
@@ -80,8 +115,7 @@ def main(argv: list[str] | None = None) -> int:
         with args.output.open("a") as handle:
             handle.write(encoded + "\n")
         print(
-            f"ok: {result.steps} batches in {duration:.2f}s; "
-            f"results: {args.output}",
+            f"ok: {result.steps} batches in {duration:.2f}s; results: {args.output}",
             flush=True,
         )
     return 0
@@ -99,6 +133,10 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--reader", choices=("pandas", "connector-x"), default="pandas")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument(
+        "--validate-categorical-inputs", action="store_true",
+        help="Check CPU category indices and save inputs on training failure.",
+    )
     parser.add_argument("--epochs", type=int, default=2)
     parser.add_argument("--max-batches", type=int, default=50)
     parser.add_argument("--batch-size", type=int, default=512)
@@ -110,14 +148,41 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--assembly-processes", type=int, default=4)
     parser.add_argument("--initial-active-processes", type=int)
     parser.add_argument("--no-adaptive-workers", action="store_true")
-    parser.add_argument("--training-order", choices=("strict", "ready"), default="ready")
+    parser.add_argument("--progress-interval-s", type=float, default=30.0)
+    parser.add_argument(
+        "--training-order", choices=("strict", "ready"), default="ready"
+    )
     parser.add_argument("--window-batches", type=int, default=4)
     parser.add_argument("--window-mb", type=int, default=512)
     parser.add_argument("--max-inflight-windows", type=int, default=8)
     parser.add_argument("--feature-cache-mb", type=int, default=4096)
     parser.add_argument("--ready-queue-mb", type=int, default=16384)
     parser.add_argument("--text-cache-mb", type=int, default=512)
+    parser.add_argument(
+        "--text-cache-scope",
+        choices=("adaptive", "shared", "local"),
+        default="adaptive",
+    )
+    parser.add_argument("--text-batch-size", type=int, default=256)
+    parser.add_argument(
+        "--text-execution", choices=("official", "direct"), default="direct"
+    )
+    parser.add_argument(
+        "--disk-text-cache-mode",
+        choices=("off", "on", "adaptive"),
+        default="adaptive",
+    )
+    parser.add_argument("--disk-text-cache-min-database-mb", type=int, default=256)
+    parser.add_argument("--disk-text-cache-min-model-inputs", type=int, default=4096)
+    parser.add_argument(
+        "--disk-text-cache-max-memory-hit-rate", type=float, default=0.10
+    )
+    parser.add_argument("--disk-text-cache-min-model-time-s", type=float, default=1.0)
     parser.add_argument("--encoded-cache-mb", type=int, default=2048)
+    parser.add_argument(
+        "--encoded-cache-scope", choices=("shared", "local"), default="shared"
+    )
+    parser.add_argument("--cache-dir", type=Path)
     parser.add_argument("--no-cross-epoch-prefetch", action="store_true")
     return parser
 

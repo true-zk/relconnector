@@ -1,0 +1,310 @@
+{
+  "dataset": "rel-stack",
+  "path": "/home/zk/relconnector/relconnector/data/relbench/rel-stack.sqlite",
+  "sqlite_bytes": 2967822336,
+  "metadata": {
+    "catalog_version": "1",
+    "dataset_name": "rel-stack",
+    "source": "relbench",
+    "source_spec": "stanford-star/relbench-v1/rel-stack",
+    "relbench_version": "3.0.1",
+    "source_revision": "",
+    "created_at": "2026-09-24T15:06:19.195761+00:00",
+    "val_timestamp": "2020-10-01T00:00:00",
+    "test_timestamp": "2021-01-01T00:00:00"
+  },
+  "snapshot": "d8e976fd0a4b78877204bc8dfbcfc9a9f7f48600",
+  "source_repo": "stanford-star/relbench-v1",
+  "cutoff": "2021-01-01T00:00:00",
+  "stype_dependencies": {
+    "relbench": "3.0.1",
+    "pytorch-frame": "0.3.0",
+    "pandas": "3.0.5",
+    "numpy": "2.5.3"
+  },
+  "tables": [
+    {
+      "table": "badges",
+      "rows": 590833,
+      "cutoff_rows": 463463,
+      "columns": 6,
+      "sqlite_columns": 6,
+      "text_columns": [
+        "Name"
+      ],
+      "sql_text_columns": [
+        "Name",
+        "Date"
+      ],
+      "stypes": {
+        "Id": "numerical",
+        "UserId": "numerical",
+        "Class": "categorical",
+        "Name": "text_embedded",
+        "TagBased": "categorical",
+        "Date": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "Date",
+      "time_bounds": [
+        "2010-07-19T19:39:07.047000",
+        "2023-09-03T04:52:35.317000"
+      ],
+      "parquet_bytes": 9578357,
+      "parquet_rows": 590833,
+      "parquet_columns": 6
+    },
+    {
+      "table": "comments",
+      "rows": 794597,
+      "cutoff_rows": 623967,
+      "columns": 7,
+      "sqlite_columns": 7,
+      "text_columns": [
+        "UserDisplayName",
+        "Text"
+      ],
+      "sql_text_columns": [
+        "ContentLicense",
+        "UserDisplayName",
+        "Text",
+        "CreationDate"
+      ],
+      "stypes": {
+        "Id": "numerical",
+        "PostId": "numerical",
+        "UserId": "numerical",
+        "ContentLicense": "categorical",
+        "UserDisplayName": "text_embedded",
+        "Text": "text_embedded",
+        "CreationDate": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "CreationDate",
+      "time_bounds": [
+        "2009-02-02T14:45:19.280000",
+        "2023-09-03T04:53:01.357000"
+      ],
+      "parquet_bytes": 127191660,
+      "parquet_rows": 794597,
+      "parquet_columns": 7
+    },
+    {
+      "table": "postHistory",
+      "rows": 1486886,
+      "cutoff_rows": 1175368,
+      "columns": 10,
+      "sqlite_columns": 10,
+      "text_columns": [
+        "UserDisplayName",
+        "RevisionGUID",
+        "Text",
+        "Comment"
+      ],
+      "sql_text_columns": [
+        "UserDisplayName",
+        "ContentLicense",
+        "RevisionGUID",
+        "Text",
+        "Comment",
+        "CreationDate"
+      ],
+      "stypes": {
+        "Id": "numerical",
+        "PostId": "numerical",
+        "UserId": "numerical",
+        "PostHistoryTypeId": "numerical",
+        "UserDisplayName": "text_embedded",
+        "ContentLicense": "categorical",
+        "RevisionGUID": "text_embedded",
+        "Text": "text_embedded",
+        "Comment": "text_embedded",
+        "CreationDate": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "CreationDate",
+      "time_bounds": [
+        "2009-02-02T14:21:12.103000",
+        "2023-09-03T04:51:32.863000"
+      ],
+      "parquet_bytes": 559529290,
+      "parquet_rows": 1486886,
+      "parquet_columns": 10
+    },
+    {
+      "table": "postLinks",
+      "rows": 103969,
+      "cutoff_rows": 77337,
+      "columns": 5,
+      "sqlite_columns": 5,
+      "text_columns": [],
+      "sql_text_columns": [
+        "CreationDate"
+      ],
+      "stypes": {
+        "Id": "numerical",
+        "RelatedPostId": "numerical",
+        "PostId": "numerical",
+        "LinkTypeId": "categorical",
+        "CreationDate": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "CreationDate",
+      "time_bounds": [
+        "2010-07-21T14:47:33.983000",
+        "2023-09-03T02:44:58.893000"
+      ],
+      "parquet_bytes": 2307604,
+      "parquet_rows": 103969,
+      "parquet_columns": 5
+    },
+    {
+      "table": "posts",
+      "rows": 415913,
+      "cutoff_rows": 333893,
+      "columns": 10,
+      "sqlite_columns": 10,
+      "text_columns": [
+        "OwnerDisplayName",
+        "Title",
+        "Tags",
+        "Body"
+      ],
+      "sql_text_columns": [
+        "OwnerDisplayName",
+        "Title",
+        "Tags",
+        "ContentLicense",
+        "Body",
+        "CreationDate"
+      ],
+      "stypes": {
+        "Id": "numerical",
+        "OwnerUserId": "numerical",
+        "PostTypeId": "numerical",
+        "ParentId": "numerical",
+        "OwnerDisplayName": "text_embedded",
+        "Title": "text_embedded",
+        "Tags": "text_embedded",
+        "ContentLicense": "categorical",
+        "Body": "text_embedded",
+        "CreationDate": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "CreationDate",
+      "time_bounds": [
+        "2009-02-02T14:21:12.103000",
+        "2023-09-03T04:49:38.447000"
+      ],
+      "parquet_bytes": 311060383,
+      "parquet_rows": 415913,
+      "parquet_columns": 10
+    },
+    {
+      "table": "users",
+      "rows": 333784,
+      "cutoff_rows": 255360,
+      "columns": 7,
+      "sqlite_columns": 7,
+      "text_columns": [
+        "DisplayName",
+        "Location",
+        "WebsiteUrl",
+        "AboutMe"
+      ],
+      "sql_text_columns": [
+        "DisplayName",
+        "Location",
+        "WebsiteUrl",
+        "AboutMe",
+        "CreationDate"
+      ],
+      "stypes": {
+        "Id": "numerical",
+        "AccountId": "numerical",
+        "DisplayName": "text_embedded",
+        "Location": "text_embedded",
+        "WebsiteUrl": "text_embedded",
+        "AboutMe": "text_embedded",
+        "CreationDate": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "CreationDate",
+      "time_bounds": [
+        "2010-07-19T06:55:26.860000",
+        "2023-09-03T04:50:59.310000"
+      ],
+      "parquet_bytes": 20422011,
+      "parquet_rows": 333784,
+      "parquet_columns": 7
+    },
+    {
+      "table": "votes",
+      "rows": 1673836,
+      "cutoff_rows": 1317876,
+      "columns": 5,
+      "sqlite_columns": 5,
+      "text_columns": [],
+      "sql_text_columns": [
+        "CreationDate"
+      ],
+      "stypes": {
+        "Id": "numerical",
+        "UserId": "numerical",
+        "PostId": "numerical",
+        "VoteTypeId": "numerical",
+        "CreationDate": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "CreationDate",
+      "time_bounds": [
+        "2009-02-02T00:00:00",
+        "2023-09-03T00:00:00"
+      ],
+      "parquet_bytes": 13593311,
+      "parquet_rows": 1673836,
+      "parquet_columns": 5
+    }
+  ],
+  "tasks": [
+    {
+      "table": "target_post_post_related",
+      "rows": 6339,
+      "columns": 5
+    },
+    {
+      "table": "target_post_votes",
+      "rows": 2771171,
+      "columns": 5
+    },
+    {
+      "table": "target_user_badge",
+      "rows": 3889034,
+      "columns": 5
+    },
+    {
+      "table": "target_user_engagement",
+      "rows": 1534825,
+      "columns": 5
+    },
+    {
+      "table": "target_user_post_comment",
+      "rows": 22823,
+      "columns": 5
+    }
+  ],
+  "rows": 5399818,
+  "cutoff_rows": 4247264,
+  "columns": 50,
+  "sqlite_columns": 50,
+  "parquet_bytes": 1043682616,
+  "text_count": 15,
+  "sql_text_count": 25
+}

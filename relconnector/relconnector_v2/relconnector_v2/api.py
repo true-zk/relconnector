@@ -21,6 +21,10 @@ from .features import (
     TensorFrameEncoder,
     TensorFrameFeatureSchema,
 )
+from .features.disk_text import (
+    text_embedding_cache_location,
+    text_model_identity,
+)
 from .features.text import GloveTextEmbedder
 from .graph import GraphIndex, InMemoryGraphIndexBuilder
 from .observability import OperationMetrics
@@ -41,6 +45,7 @@ class OnlineTrainingSession:
     graph: GraphIndex
     task: TaskSpec
     feature_schema: TensorFrameFeatureSchema
+    text_embedder: GloveTextEmbedder
     components: RuntimeComponents
     metrics: OperationMetrics
     initialization_cache: dict[str, bool]
@@ -73,6 +78,7 @@ class OnlineRelBenchModel:
         torch.set_num_threads(self.config.torch_num_threads)
         torch.manual_seed(self.config.seed)
         path = self.sqlite_dir / f"{self.dataset}.sqlite"
+        database_version = _database_version(path)
         reader = create_reader(self.reader_kind, path)
         reader.validate_catalog()
         task = TaskSpec.from_metadata(reader.task_metadata()[self.task_name])
@@ -83,6 +89,17 @@ class OnlineRelBenchModel:
             else self.sqlite_dir / ".relconnector-v2-cache"
         )
         effective_cache_dir = cache_dir if self.config.initialization_cache else None
+        disk_text_cache_path, disk_text_cache_namespace = text_embedding_cache_location(
+            cache_dir,
+            database_path=path,
+            database_version=database_version,
+            model_identity=text_model_identity(
+                self.config.text_model_path,
+                default=GloveTextEmbedder.model_name,
+            ),
+            execution=self.config.text_execution,
+            embedding_dim=GloveTextEmbedder.embedding_dim,
+        )
         metrics = OperationMetrics(self.config.operation_telemetry)
         schema_builder = SqlTensorFrameSchemaBuilder(
             reader,
@@ -124,7 +141,7 @@ class OnlineRelBenchModel:
             feature_columns=feature_schema.feature_columns,
             block_size=self.config.feature_block_size,
             cache_bytes=self.config.feature_cache_bytes,
-            database_version=_database_version(path),
+            database_version=database_version,
             metrics=metrics,
         )
         text_embedder = GloveTextEmbedder(
@@ -132,6 +149,22 @@ class OnlineRelBenchModel:
             cache_bytes=self.config.text_embedding_cache_bytes,
             cache_admission=self.config.text_cache_admission,
             execution=self.config.text_execution,
+            disk_cache_path=(
+                None
+                if self.config.disk_text_cache_mode == "off"
+                else str(disk_text_cache_path)
+            ),
+            disk_cache_namespace=disk_text_cache_namespace,
+            disk_cache_mode=self.config.disk_text_cache_mode,
+            database_bytes=path.stat().st_size,
+            disk_cache_min_database_bytes=(
+                self.config.disk_text_cache_min_database_bytes
+            ),
+            disk_cache_min_model_inputs=(self.config.disk_text_cache_min_model_inputs),
+            disk_cache_max_memory_hit_rate=(
+                self.config.disk_text_cache_max_memory_hit_rate
+            ),
+            disk_cache_min_model_time_s=(self.config.disk_text_cache_min_model_time_s),
             metrics=metrics,
         )
         encoder = TensorFrameEncoder(
@@ -181,6 +214,7 @@ class OnlineRelBenchModel:
             graph=graph,
             task=task,
             feature_schema=feature_schema,
+            text_embedder=text_embedder,
             components=RuntimeComponents(
                 seeds=seeds,
                 sampler=sampler,
@@ -216,10 +250,11 @@ class OnlineRelBenchModel:
                 )
             )
         else:
-            raise RuntimeError(
-                "process execution requires MultiprocessRelBenchModel"
-            )
-        return executor.run(session.components, epochs=self.config.epochs)
+            raise RuntimeError("process execution requires MultiprocessRelBenchModel")
+        try:
+            return executor.run(session.components, epochs=self.config.epochs)
+        finally:
+            session.text_embedder.close()
 
 
 def _cutoff(reader: BaseDatabaseReader) -> pd.Timestamp | None:

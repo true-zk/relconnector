@@ -1,0 +1,31 @@
+dataset,version,time_s_per_batch,time_status,rss_gib,rss_scope,rss_timeout_observation,v2_source
+amazon,vanilla,,timeout,4.23,historical reported process RSS,True,
+amazon,v1,2.8054501412999597,completed,7.23,historical reported process RSS,False,
+amazon,v2,1.4836126278100457,completed,2.763153076171875,main process only,False,benchmarks/v2-full-matrix-20260925/v2.jsonl:11
+arxiv,vanilla,,timeout,4.29,historical reported process RSS,True,
+arxiv,v1,2.7346743295019156,completed,8.15,historical reported process RSS,False,
+arxiv,v2,0.4701328072657896,completed,2.4141693115234375,main process only,False,benchmarks/v2-full-matrix-20260925/v2.jsonl:4
+avito,vanilla,,timeout,4.26,historical reported process RSS,True,
+avito,v1,0.27667746413697364,completed,4.51,historical reported process RSS,False,
+avito,v2,0.1856580478010362,completed,3.2686004638671875,main process only,False,benchmarks/v2-full-matrix-20260925/v2.jsonl:7
+event,vanilla,26.836842105263155,completed,3.91,historical reported process RSS,False,
+event,v1,25.423684210526318,completed,4.24,historical reported process RSS,False,
+event,v2,0.5101612789623783,completed,3.3188552856445312,main process only,False,benchmarks/v2-event-init-optimized-20260927/training.jsonl:1
+f1,vanilla,3.033333333333333,completed,2.44,historical reported process RSS,False,
+f1,v1,2.65,completed,2.57,historical reported process RSS,False,
+f1,v2,2.3422456760696755,completed,2.027576446533203,main process only,False,benchmarks/v2-event-init-optimized-20260927/f1.jsonl:1
+hm,vanilla,,timeout,3.89,historical reported process RSS,True,
+hm,v1,0.23284798290141595,completed,5.26,historical reported process RSS,False,
+hm,v2,0.11756120807486391,completed,3.0353355407714844,main process only,False,benchmarks/v2-full-matrix-20260925/v2.jsonl:6
+ratebeer,vanilla,,timeout,3.86,historical reported process RSS,True,
+ratebeer,v1,0.9180160652811424,partial-run throughput estimate,8.74,historical reported process RSS,True,
+ratebeer,v2,0.7722464480146416,completed,3.0220947265625,main process only,False,benchmarks/v2-full-matrix-20260925/v2.jsonl:14
+salt,vanilla,4.458296529968454,completed,5.15,historical reported process RSS,False,
+salt,v1,0.8935646687697161,completed,9.29,historical reported process RSS,False,
+salt,v2,0.8214875504069327,completed,3.121063232421875,main process only,False,benchmarks/v2-full-matrix-20260925/v2.jsonl:9
+stack,vanilla,1.184124584215301,completed,3.67,historical reported process RSS,False,
+stack,v1,0.9719836710009071,completed,8.16,historical reported process RSS,False,
+stack,v2,0.27711348365489263,completed,2.300640106201172,main process only,False,benchmarks/v2-full-matrix-20260925/v2.jsonl:10
+trial,vanilla,0.711111111111111,completed,2.92,historical reported process RSS,False,
+trial,v1,0.566884531590414,completed,4.5,historical reported process RSS,False,
+trial,v2,0.40501372838897065,completed,2.31005859375,main process only,False,benchmarks/v2-trial-rerun-20260927/v2.jsonl:1

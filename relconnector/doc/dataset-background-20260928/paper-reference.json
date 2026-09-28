@@ -1,0 +1,18 @@
+{
+  "checked_date": "2026-09-28",
+  "v1_source": "https://arxiv.org/html/2407.20060v1#S2.T1",
+  "v2_source": "https://arxiv.org/html/2602.12606v2#S3.T1",
+  "description": "Table 1: rows up to and including the test cutoff; columns include relational keys.",
+  "datasets": {
+    "rel-amazon": {"tables": 3, "rows": 15000713, "columns": 15},
+    "rel-arxiv": {"tables": 6, "rows": 2146112, "columns": 21},
+    "rel-avito": {"tables": 8, "rows": 20679117, "columns": 42},
+    "rel-event": {"tables": 5, "rows": 41328337, "columns": 128},
+    "rel-f1": {"tables": 9, "rows": 74063, "columns": 67},
+    "rel-hm": {"tables": 3, "rows": 16664809, "columns": 37},
+    "rel-ratebeer": {"tables": 13, "rows": 13787005, "columns": 221},
+    "rel-salt": {"tables": 4, "rows": 4257145, "columns": 31},
+    "rel-stack": {"tables": 7, "rows": 4247264, "columns": 52},
+    "rel-trial": {"tables": 15, "rows": 5434924, "columns": 140}
+  }
+}

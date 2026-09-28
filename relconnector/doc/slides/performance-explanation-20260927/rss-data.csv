@@ -1,0 +1,11 @@
+dataset,batch_reported_rss_gib,vanilla_reported_rss_gib,latest_reported_rss_gib,v2_main_process_rss_gib,v2_source
+amazon,103.82,4.23,7.23,2.763153076171875,benchmarks/v2-full-matrix-20260925/v2.jsonl:11
+arxiv,7.33,4.29,8.15,2.4141693115234375,benchmarks/v2-full-matrix-20260925/v2.jsonl:4
+avito,17.39,4.26,4.51,3.2686004638671875,benchmarks/v2-full-matrix-20260925/v2.jsonl:7
+event,31.93,3.91,4.24,3.3188552856445312,benchmarks/v2-event-init-optimized-20260927/training.jsonl:1
+f1,2.29,2.44,2.57,2.027576446533203,benchmarks/v2-event-init-optimized-20260927/f1.jsonl:1
+hm,14.35,3.89,5.26,3.0353355407714844,benchmarks/v2-full-matrix-20260925/v2.jsonl:6
+ratebeer,20.29,3.86,8.74,3.0220947265625,benchmarks/v2-full-matrix-20260925/v2.jsonl:14
+salt,17.73,5.15,9.29,3.121063232421875,benchmarks/v2-full-matrix-20260925/v2.jsonl:9
+stack,19.5,3.67,8.16,2.300640106201172,benchmarks/v2-full-matrix-20260925/v2.jsonl:10
+trial,22.04,2.92,4.5,2.31005859375,benchmarks/v2-trial-rerun-20260927/v2.jsonl:1

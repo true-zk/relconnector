@@ -1,0 +1,31 @@
+dataset,version,time_s_per_batch,time_plot_status,rss_gib,rss_scope
+amazon,vanilla,,timeout (symbolic broken bar),4.23,historical process RSS
+amazon,v1,2.8054501412999597,completed,7.23,historical process RSS
+amazon,v2,1.4836126278100457,completed,2.763153076171875,main process only
+arxiv,vanilla,,timeout (symbolic broken bar),4.29,historical process RSS
+arxiv,v1,2.7346743295019156,completed,8.15,historical process RSS
+arxiv,v2,0.4701328072657896,completed,2.4141693115234375,main process only
+avito,vanilla,,timeout (symbolic broken bar),4.26,historical process RSS
+avito,v1,0.27667746413697364,completed,4.51,historical process RSS
+avito,v2,0.1856580478010362,completed,3.2686004638671875,main process only
+event,vanilla,26.836842105263155,completed,3.91,historical process RSS
+event,v1,25.423684210526318,completed,4.24,historical process RSS
+event,v2,0.5101612789623783,completed,3.3188552856445312,main process only
+f1,vanilla,3.033333333333333,completed,2.44,historical process RSS
+f1,v1,2.65,completed,2.57,historical process RSS
+f1,v2,2.3422456760696755,completed,2.027576446533203,main process only
+hm,vanilla,,timeout (symbolic broken bar),3.89,historical process RSS
+hm,v1,0.23284798290141595,completed,5.26,historical process RSS
+hm,v2,0.11756120807486391,completed,3.0353355407714844,main process only
+ratebeer,vanilla,,timeout (symbolic broken bar),3.86,historical process RSS
+ratebeer,v1,0.9180160652811424,timeout (symbolic broken bar),8.74,historical process RSS
+ratebeer,v2,0.7722464480146416,completed,3.0220947265625,main process only
+salt,vanilla,4.458296529968454,completed,5.15,historical process RSS
+salt,v1,0.8935646687697161,completed,9.29,historical process RSS
+salt,v2,0.8214875504069327,completed,3.121063232421875,main process only
+stack,vanilla,1.184124584215301,completed,3.67,historical process RSS
+stack,v1,0.9719836710009071,completed,8.16,historical process RSS
+stack,v2,0.27711348365489263,completed,2.300640106201172,main process only
+trial,vanilla,0.711111111111111,completed,2.92,historical process RSS
+trial,v1,0.566884531590414,completed,4.5,historical process RSS
+trial,v2,0.40501372838897065,completed,2.31005859375,main process only

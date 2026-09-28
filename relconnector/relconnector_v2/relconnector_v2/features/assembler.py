@@ -19,6 +19,7 @@ from .contracts import (
     PreparedBatch,
     RecommendationFeatureBatch,
 )
+from .rows import gather_rows
 from .schema import TensorFrameEncoder
 from .shared_encoded import SharedEncodedFeatureCache
 
@@ -97,7 +98,7 @@ class TensorFrameBatchAssembler:
                     )
                 encoded[cache_key] = tensor_frame
             with self.encoder.metrics.timer("frame_gather", table=node_type):
-                data[node_type].tf = tensor_frame[features.inverse]
+                data[node_type].tf = gather_rows(tensor_frame, features.inverse)
             data[node_type].n_id = node_ids
             data[node_type].num_nodes = len(node_ids)
             sampled_nodes = sample.num_sampled_nodes.get(node_type)
@@ -127,7 +128,10 @@ class TensorFrameBatchAssembler:
         frame: pd.DataFrame,
         epoch: int,
     ) -> TensorFrame:
-        groups, misses = self.encoded_cache.lookup_many(table, node_ids, epoch=epoch)
+        with self.encoder.metrics.timer("encoded_cache_lookup", table=table):
+            groups, misses = self.encoded_cache.lookup_many(
+                table, node_ids, epoch=epoch
+            )
         self.encoder.metrics.add(
             "encoded_cache_hits",
             len(node_ids) - len(misses),
@@ -136,27 +140,38 @@ class TensorFrameBatchAssembler:
         self.encoder.metrics.add("encoded_cache_misses", len(misses), table=table)
         if not groups:
             encoded = self._encode_frame(table, frame, epoch)
-            self.encoded_cache.put(table, node_ids, encoded, epoch=epoch)
+            with self.encoder.metrics.timer("encoded_cache_put", table=table):
+                self.encoded_cache.put(table, node_ids, encoded, epoch=epoch)
             return encoded
+
+        if not misses and len(groups) == 1:
+            entry, locations = groups[0]
+            if len(entry.frame) == len(node_ids) and all(
+                position == row for position, row in locations
+            ):
+                return entry.frame
 
         pieces: list[TensorFrame] = []
         positions: list[int] = []
         for entry, locations in groups:
             positions.extend(position for position, _ in locations)
             rows = torch.tensor([row for _, row in locations], dtype=torch.long)
-            pieces.append(entry.frame[rows])
+            pieces.append(gather_rows(entry.frame, rows))
         if misses:
             missing_frame = frame.iloc[misses].reset_index(drop=True)
             missing = self._encode_frame(table, missing_frame, epoch)
             pieces.append(missing)
             positions.extend(misses)
             miss_index = torch.tensor(misses, dtype=torch.long)
-            self.encoded_cache.put(table, node_ids[miss_index], missing, epoch=epoch)
+            with self.encoder.metrics.timer("encoded_cache_put", table=table):
+                self.encoded_cache.put(
+                    table, node_ids[miss_index], missing, epoch=epoch
+                )
         combined = pieces[0] if len(pieces) == 1 else cat(pieces, dim=0)
         if positions == list(range(len(positions))):
             return combined
         restore = torch.argsort(torch.tensor(positions, dtype=torch.long))
-        return combined[restore]
+        return gather_rows(combined, restore)
 
     def _encode_frame(self, table: str, frame: pd.DataFrame, epoch: int) -> TensorFrame:
         text_embedder = getattr(self.encoder, "text_embedder", None)

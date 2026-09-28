@@ -2,7 +2,7 @@
 
 ## 范围与约束
 
-以修正后的 cache_baseline 为对照，仅修改 latest、benchmark 和测试。
+以修正后的 cache_baseline 为对照，仅修改 v1、benchmark 和测试。
 保持官方 stype、任务隐藏列、GloVe 300 维语义、采样 RNG 和训练 FIFO。
 实现观测、初始化复用、编码缓存、文本执行和动态流水线；不按数据集名称硬编码，
 不持久化完整特征或预采样数据。用户已授权按瓶颈分析报告施工。

@@ -4,7 +4,7 @@
 最多四 batch feature window、raw block LRU 和 GloVe 整句 LRU。
 
 本轮按用户授权回补正确性修复，详见 [修订报告](../../doc/cache-baseline-correctness-report.md)。
-包内导入完全独立于 latest；benchmark 使用 `cache_online_training.py` / `cache_wrappers.py`。
+包内导入完全独立于 v1；benchmark 使用 `cache_online_training.py` / `cache_wrappers.py`。
 不包含动态窗口、自适应准入或新增的编码并行算法。
 
 ```bash

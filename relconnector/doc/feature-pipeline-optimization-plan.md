@@ -65,7 +65,7 @@ __relconnector_node_id__ INTEGER PRIMARY KEY
 
 ## Phase 2: 可观测性
 
-每次 latest run 输出：
+每次 v1 run 输出：
 
 - requested node occurrences、unique rows、duplicate factor；
 - queried rows、dense/sparse query count、SQL amplification；
@@ -119,13 +119,13 @@ normalized text -> frozen GloVe vector
 
 1. 单元测试验证 rowid、迁移、inverse 恢复、推荐三分支、window FIFO、cache budget。
 2. Ruff、Pyright、compileall 和完整测试。
-3. 在原始数据库上做 vanilla/latest paired smoke，要求 loss 完全一致。
+3. 在原始数据库上做 vanilla/v1 paired smoke，要求 loss 完全一致。
 4. 在迁移副本上验证显式 node ID lookup。
 5. 选编码瓶颈任务做 GPU 诊断实验，再决定是否扩大到 10 个正式任务。
 
 ## 当前状态
 
-- [x] 冻结 `batch_baseline` 和 `vanilla_baseline`，latest 从 vanilla 复制后独立修改。
+- [x] 冻结 `batch_baseline` 和 `vanilla_baseline`，v1 从 vanilla 复制后独立修改。
 - [x] 修复隐式 rowid lookup。
 - [x] 新 writer 自动创建显式 node ID。
 - [x] 实现离线迁移工具，并生成、VACUUM `data/relbench-explicit-node-id/` 副本；10 个库无 keyless data table，稳定占用 33GB。

@@ -1,0 +1,360 @@
+{
+  "dataset": "rel-f1",
+  "path": "/home/zk/relconnector/relconnector/data/relbench/rel-f1.sqlite",
+  "sqlite_bytes": 6225920,
+  "metadata": {
+    "catalog_version": "1",
+    "dataset_name": "rel-f1",
+    "source": "relbench",
+    "source_spec": "stanford-star/relbench-v1/rel-f1",
+    "relbench_version": "3.0.1",
+    "source_revision": "",
+    "created_at": "2026-09-24T13:44:48.446216+00:00",
+    "val_timestamp": "2005-01-01T00:00:00",
+    "test_timestamp": "2010-01-01T00:00:00"
+  },
+  "snapshot": "d8e976fd0a4b78877204bc8dfbcfc9a9f7f48600",
+  "source_repo": "stanford-star/relbench-v1",
+  "cutoff": "2010-01-01T00:00:00",
+  "stype_dependencies": {
+    "relbench": "3.0.1",
+    "pytorch-frame": "0.3.0",
+    "pandas": "3.0.5",
+    "numpy": "2.5.3"
+  },
+  "tables": [
+    {
+      "table": "circuits",
+      "rows": 77,
+      "cutoff_rows": 77,
+      "columns": 8,
+      "sqlite_columns": 8,
+      "text_columns": [
+        "circuitRef",
+        "name",
+        "location",
+        "country"
+      ],
+      "sql_text_columns": [
+        "circuitRef",
+        "name",
+        "location",
+        "country"
+      ],
+      "stypes": {
+        "circuitId": "numerical",
+        "circuitRef": "text_embedded",
+        "name": "text_embedded",
+        "location": "text_embedded",
+        "country": "text_embedded",
+        "lat": "numerical",
+        "lng": "numerical",
+        "alt": "numerical"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": null,
+      "time_bounds": null,
+      "parquet_bytes": 10623,
+      "parquet_rows": 77,
+      "parquet_columns": 8
+    },
+    {
+      "table": "constructor_results",
+      "rows": 12290,
+      "cutoff_rows": 9408,
+      "columns": 5,
+      "sqlite_columns": 5,
+      "text_columns": [],
+      "sql_text_columns": [
+        "date"
+      ],
+      "stypes": {
+        "constructorResultsId": "numerical",
+        "raceId": "numerical",
+        "constructorId": "numerical",
+        "points": "numerical",
+        "date": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "date",
+      "time_bounds": [
+        "1956-01-22T00:00:00",
+        "2023-07-30T13:00:00"
+      ],
+      "parquet_bytes": 113911,
+      "parquet_rows": 12290,
+      "parquet_columns": 5
+    },
+    {
+      "table": "constructor_standings",
+      "rows": 13051,
+      "cutoff_rows": 10170,
+      "columns": 7,
+      "sqlite_columns": 7,
+      "text_columns": [],
+      "sql_text_columns": [
+        "date"
+      ],
+      "stypes": {
+        "constructorStandingsId": "numerical",
+        "raceId": "numerical",
+        "constructorId": "numerical",
+        "points": "numerical",
+        "position": "numerical",
+        "wins": "numerical",
+        "date": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "date",
+      "time_bounds": [
+        "1958-01-19T00:00:00",
+        "2023-07-30T13:00:00"
+      ],
+      "parquet_bytes": 143374,
+      "parquet_rows": 13051,
+      "parquet_columns": 7
+    },
+    {
+      "table": "constructors",
+      "rows": 211,
+      "cutoff_rows": 211,
+      "columns": 4,
+      "sqlite_columns": 4,
+      "text_columns": [
+        "constructorRef",
+        "name",
+        "nationality"
+      ],
+      "sql_text_columns": [
+        "constructorRef",
+        "name",
+        "nationality"
+      ],
+      "stypes": {
+        "constructorId": "numerical",
+        "constructorRef": "text_embedded",
+        "name": "text_embedded",
+        "nationality": "text_embedded"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": null,
+      "time_bounds": null,
+      "parquet_bytes": 8477,
+      "parquet_rows": 211,
+      "parquet_columns": 4
+    },
+    {
+      "table": "drivers",
+      "rows": 857,
+      "cutoff_rows": 857,
+      "columns": 7,
+      "sqlite_columns": 7,
+      "text_columns": [
+        "driverRef",
+        "code",
+        "forename",
+        "surname",
+        "nationality"
+      ],
+      "sql_text_columns": [
+        "driverRef",
+        "code",
+        "forename",
+        "surname",
+        "dob",
+        "nationality"
+      ],
+      "stypes": {
+        "driverId": "numerical",
+        "driverRef": "text_embedded",
+        "code": "text_embedded",
+        "forename": "text_embedded",
+        "surname": "text_embedded",
+        "dob": "timestamp",
+        "nationality": "text_embedded"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": null,
+      "time_bounds": null,
+      "parquet_bytes": 38814,
+      "parquet_rows": 857,
+      "parquet_columns": 7
+    },
+    {
+      "table": "qualifying",
+      "rows": 9815,
+      "cutoff_rows": 4082,
+      "columns": 7,
+      "sqlite_columns": 7,
+      "text_columns": [],
+      "sql_text_columns": [
+        "date"
+      ],
+      "stypes": {
+        "qualifyId": "numerical",
+        "raceId": "numerical",
+        "driverId": "numerical",
+        "constructorId": "numerical",
+        "number": "numerical",
+        "position": "categorical",
+        "date": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "date",
+      "time_bounds": [
+        "1994-03-26T00:00:00",
+        "2023-07-29T13:00:00"
+      ],
+      "parquet_bytes": 101467,
+      "parquet_rows": 9815,
+      "parquet_columns": 7
+    },
+    {
+      "table": "races",
+      "rows": 1101,
+      "cutoff_rows": 820,
+      "columns": 7,
+      "sqlite_columns": 7,
+      "text_columns": [
+        "name"
+      ],
+      "sql_text_columns": [
+        "name",
+        "date",
+        "time"
+      ],
+      "stypes": {
+        "raceId": "numerical",
+        "year": "categorical",
+        "round": "numerical",
+        "circuitId": "numerical",
+        "name": "text_embedded",
+        "date": "timestamp",
+        "time": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "date",
+      "time_bounds": [
+        "1950-05-13T00:00:00",
+        "2023-11-26T13:00:00"
+      ],
+      "parquet_bytes": 24868,
+      "parquet_rows": 1101,
+      "parquet_columns": 7
+    },
+    {
+      "table": "results",
+      "rows": 26080,
+      "cutoff_rows": 20323,
+      "columns": 15,
+      "sqlite_columns": 15,
+      "text_columns": [],
+      "sql_text_columns": [
+        "date"
+      ],
+      "stypes": {
+        "resultId": "numerical",
+        "raceId": "numerical",
+        "driverId": "numerical",
+        "constructorId": "numerical",
+        "number": "numerical",
+        "grid": "numerical",
+        "position": "numerical",
+        "positionOrder": "numerical",
+        "points": "numerical",
+        "laps": "numerical",
+        "milliseconds": "numerical",
+        "fastestLap": "numerical",
+        "rank": "numerical",
+        "statusId": "numerical",
+        "date": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "date",
+      "time_bounds": [
+        "1950-05-13T00:00:00",
+        "2023-07-30T13:00:00"
+      ],
+      "parquet_bytes": 438901,
+      "parquet_rows": 26080,
+      "parquet_columns": 15
+    },
+    {
+      "table": "standings",
+      "rows": 34124,
+      "cutoff_rows": 28115,
+      "columns": 7,
+      "sqlite_columns": 7,
+      "text_columns": [],
+      "sql_text_columns": [
+        "date"
+      ],
+      "stypes": {
+        "driverStandingsId": "numerical",
+        "raceId": "numerical",
+        "driverId": "numerical",
+        "points": "numerical",
+        "position": "numerical",
+        "wins": "numerical",
+        "date": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "date",
+      "time_bounds": [
+        "1950-05-13T00:00:00",
+        "2023-07-30T13:00:00"
+      ],
+      "parquet_bytes": 344321,
+      "parquet_rows": 34124,
+      "parquet_columns": 7
+    }
+  ],
+  "tasks": [
+    {
+      "table": "target_driver_circuit_compete",
+      "rows": 2703,
+      "columns": 5
+    },
+    {
+      "table": "target_driver_dnf",
+      "rows": 12679,
+      "columns": 5
+    },
+    {
+      "table": "target_driver_position",
+      "rows": 8712,
+      "columns": 5
+    },
+    {
+      "table": "target_driver_top3",
+      "rows": 2667,
+      "columns": 5
+    },
+    {
+      "table": "target_qualifying_position",
+      "rows": 9815,
+      "columns": 5
+    },
+    {
+      "table": "target_results_position",
+      "rows": 15207,
+      "columns": 5
+    }
+  ],
+  "rows": 97606,
+  "cutoff_rows": 74063,
+  "columns": 67,
+  "sqlite_columns": 67,
+  "parquet_bytes": 1224756,
+  "text_count": 13,
+  "sql_text_count": 21
+}

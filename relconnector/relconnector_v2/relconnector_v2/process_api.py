@@ -19,6 +19,10 @@ from .features import (
     SqlTensorFrameSchemaBuilder,
     TensorFrameFeatureSchema,
 )
+from .features.disk_text import (
+    text_embedding_cache_location,
+    text_model_identity,
+)
 from .features.text import GloveTextEmbedder
 from .graph import GraphIndex, InMemoryGraphIndexBuilder
 from .observability import OperationMetrics
@@ -70,6 +74,7 @@ class MultiprocessRelBenchModel:
         torch.set_num_threads(self.config.torch_num_threads)
         torch.manual_seed(self.config.seed)
         path = self.sqlite_dir / f"{self.dataset}.sqlite"
+        database_version = _database_version(path)
         reader = create_reader(self.reader_kind, path)
         reader.validate_catalog()
         task = TaskSpec.from_metadata(reader.task_metadata()[self.task_name])
@@ -80,6 +85,17 @@ class MultiprocessRelBenchModel:
             else self.sqlite_dir / ".relconnector-v2-cache"
         )
         effective_cache_dir = cache_dir if self.config.initialization_cache else None
+        disk_text_cache_path, disk_text_cache_namespace = text_embedding_cache_location(
+            cache_dir,
+            database_path=path,
+            database_version=database_version,
+            model_identity=text_model_identity(
+                self.config.text_model_path,
+                default=GloveTextEmbedder.model_name,
+            ),
+            execution=self.config.text_execution,
+            embedding_dim=GloveTextEmbedder.embedding_dim,
+        )
         metrics = OperationMetrics(self.config.operation_telemetry)
         schema_builder = SqlTensorFrameSchemaBuilder(
             reader,
@@ -139,7 +155,7 @@ class MultiprocessRelBenchModel:
         workers = self.config.assembly_processes
         factory = SqlAssemblyWorkerFactory(
             database_path=str(path),
-            database_version=_database_version(path),
+            database_version=database_version,
             reader_kind=self.reader_kind,
             hidden_columns=task.hidden_columns,
             feature_schema=feature_schema,
@@ -150,11 +166,40 @@ class MultiprocessRelBenchModel:
             text_cache_bytes=self.config.text_embedding_cache_bytes // workers,
             text_cache_admission=self.config.text_cache_admission,
             text_execution=self.config.text_execution,
-            shared_text_cache_bytes=self.config.text_embedding_cache_bytes,
+            shared_text_cache_bytes=(
+                self.config.text_embedding_cache_bytes
+                if self.config.text_cache_scope in {"shared", "adaptive"}
+                else 0
+            ),
+            disk_text_cache_path=(
+                None
+                if self.config.disk_text_cache_mode == "off"
+                else str(disk_text_cache_path)
+            ),
+            disk_text_cache_namespace=disk_text_cache_namespace,
+            disk_text_cache_mode=self.config.disk_text_cache_mode,
+            database_bytes=path.stat().st_size,
+            disk_text_cache_min_database_bytes=(
+                self.config.disk_text_cache_min_database_bytes
+            ),
+            disk_text_cache_min_model_inputs=(
+                self.config.disk_text_cache_min_model_inputs
+            ),
+            disk_text_cache_max_memory_hit_rate=(
+                self.config.disk_text_cache_max_memory_hit_rate
+            ),
+            disk_text_cache_min_model_time_s=(
+                self.config.disk_text_cache_min_model_time_s
+            ),
             encoded_cache_bytes=self.config.encoded_feature_cache_bytes // workers,
-            shared_encoded_cache_bytes=self.config.encoded_feature_cache_bytes,
+            shared_encoded_cache_bytes=(
+                self.config.encoded_feature_cache_bytes
+                if self.config.encoded_cache_scope == "shared"
+                else 0
+            ),
             encoded_cache_admission=self.config.encoded_cache_admission,
             operation_telemetry=self.config.operation_telemetry,
+            adaptive_text_index=self.config.text_cache_scope == "adaptive",
         )
         self.session = MultiprocessTrainingSession(
             graph=graph,
@@ -187,12 +232,11 @@ class MultiprocessRelBenchModel:
                 max_inflight_windows=self.config.process_max_inflight_windows,
                 initial_active_processes=self.config.process_initial_active_workers,
                 adaptive_workers=self.config.process_adaptive_workers,
-                worker_scale_interval_s=(
-                    self.config.process_worker_scale_interval_s
-                ),
+                worker_scale_interval_s=(self.config.process_worker_scale_interval_s),
                 cross_epoch_prefetch=self.config.cross_epoch_prefetch,
                 training_order=self.config.process_training_order,
                 start_method=self.config.process_start_method,
+                progress_interval_s=self.config.process_progress_interval_s,
             )
         )
         return executor.run(session.components, epochs=self.config.epochs)

@@ -5,16 +5,16 @@
 按本轮授权先完成版本冻结、再回补正确性问题。没有实施动态策略算法、
 encoded TensorFrame cache、token 执行重写或多 worker 优化。
 
-- `baseline/cache_baseline/`：保留原 latest 的节点去重、推荐分支合并、四 batch
+- `baseline/cache_baseline/`：保留原 v1 的节点去重、推荐分支合并、四 batch
   feature window、raw block LRU 和 GloVe 整句 LRU。
-- `--implementation cache`：独立 benchmark adapter，不导入 latest 的训练组件。
+- `--implementation cache`：独立 benchmark adapter，不导入 v1 的训练组件。
 - `relbench_compat/`：小型、版本化的 task/stype 数据正确性契约；不含训练实现。
 - `experiment.correctness_version=relbench-correctness-v1`：新结果标识；比较工具
   将旧结果与新结果识别为不同正确性版本。
 
 ## 2. 修复前快照
 
-修复前的 latest、batch、vanilla、benchmark 和离线代码共 119 个文件已保存：
+修复前的 v1、batch、vanilla、benchmark 和离线代码共 119 个文件已保存：
 
 - `baseline/archives/pre-correctness-20260916.tar.gz`
 - `baseline/archives/pre-correctness-20260916.sha256.json`
@@ -34,9 +34,9 @@ encoded TensorFrame cache、token 执行重写或多 worker 优化。
 | object dtype 未还原 | reader 的 nullable/string dtype 被保留，影响官方类型推断；按 catalog 转回 object | 全部 reader 及离线抽样 |
 | vanilla rowid 查询退化 | WHERE/ORDER BY 使用 rowid-1；现使用裸 rowid 和节点 ID +1，SELECT 保留零基映射 | vanilla；其余在线版本原有修复保留 |
 | 基线默认路径错误 | 拷贝增加一层目录后 parents 下标未调整 | batch、vanilla、cache |
-| batch benchmark 导入/类型混用 | 入口引用不存在的 relconnector.baseline 路径，同时混用 latest 和 vanilla contracts | batch benchmark |
-| GloVe 缓存实际 storage 超出计费 | 缓存单行 Tensor view 会保留整批 backing storage；改为缓存独立 clone | latest、cache |
-| SQL amplification 分母失真 | 常量特征节点无需 SQL，却计入待查询行数；增加 featureless_rows 并从分母排除 | latest、cache |
+| batch benchmark 导入/类型混用 | 入口引用不存在的 relconnector.baseline 路径，同时混用 v1 和 vanilla contracts | batch benchmark |
+| GloVe 缓存实际 storage 超出计费 | 缓存单行 Tensor view 会保留整批 backing storage；改为缓存独立 clone | v1、cache |
+| SQL amplification 分母失真 | 常量特征节点无需 SQL，却计入待查询行数；增加 featureless_rows 并从分母排除 | v1、cache |
 
 `text_embedding_cache_bytes` 仍表示 Tensor payload 预算，不包含字符串键和 Python
 容器开销，也不是进程 RSS 硬限制。此次 clone 修复解决额外持有整批 Tensor storage。
@@ -77,7 +77,7 @@ artifact 包含数据库路径/大小/mtime、cutoff、依赖版本、样本 ID 
 - 运行包测试：43 项通过，其中新增 10 项覆盖本轮缺陷。
 - 离线数据测试：6 项通过。
 - Ruff、Pyright、compileall 通过。
-- 基线导入检查：batch、vanilla、cache 均不导入 latest。
+- 基线导入检查：batch、vanilla、cache 均不导入 v1。
 - 原始/显式 node ID 两目录的 20 个库、128 个任务视图检查通过：三个在线版本
   的 stype projection 与隐藏列一致；batch 使用相同 vanilla schema 契约。
 - 四版本固定 fixture：相同 TensorFrame、CPU 单步 loss、optimizer 更新后的
@@ -89,7 +89,7 @@ GPU 回归使用 A30、batch 512、fanout 128x128、channels 128、1 CPU thread�
 F1 推荐任务为完整 6 batch，Salt autocomplete 为前 8 batch。四版本运行入口、
 特征隐藏和训练更新均经过实际执行；GPU 结果见文末产物。
 
-| 任务 | Batch loss | Vanilla loss | Cache loss | Latest loss |
+| 任务 | Batch loss | Vanilla loss | Cache loss | v1 loss |
 | --- | ---: | ---: | ---: | ---: |
 | rel-f1 | 0.892001512322 | 0.892027439284 | 0.891995716709 | 0.892046897838 |
 | rel-salt | 1.504982978106 | 1.504981309175 | 1.504981815815 | 1.504984661937 |

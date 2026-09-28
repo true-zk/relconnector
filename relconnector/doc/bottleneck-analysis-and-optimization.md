@@ -156,7 +156,7 @@ fingerprint 持久化。拓扑索引也属于项目允许保存的图结构数�
 
 ### 3.6 内存和 GPU
 
-当前十项 latest 实验的峰值 RSS 均低于 10GiB，Ratebeer timeout 前为 8.74GiB。
+当前十项 v1 实验的峰值 RSS 均低于 10GiB，Ratebeer timeout 前为 8.74GiB。
 因此当前阶段不应以降低内存为首要目标，也不应无条件增大所有缓存。
 
 GPU 端的主要问题是供给不足，而不是模型计算过慢。Amazon 的 train step 累计
@@ -237,11 +237,11 @@ RelBench 3.0.1 的官方流程是：
 当前 `SqlTensorFrameSchemaBuilder` 先排除主外键和任务隐藏列，再从 cutoff
 过滤后的数据中读取按 node ID 排序的前 1000 行；官方是在完整表上随机采样，
 之后才由建图/materialize 流程移除主外键和隐藏列。虽然 batch baseline、
-vanilla 和 latest 当前共享同一份本地 schema，彼此可比，但不保证与官方
+vanilla 和 v1 当前共享同一份本地 schema，彼此可比，但不保证与官方
 RelBench proposal 完全一致。
 
 已实现 `data.initialize_stypes`：按官方 pandas 抽样规则有界读取特征，调用同一
-`infer_df_stype()` 并保留 RelBench 类型转换，以官方函数对照测试验收后固化小型 metadata artifact。batch baseline、vanilla 和 latest 必须读取同一份
+`infer_df_stype()` 并保留 RelBench 类型转换，以官方函数对照测试验收后固化小型 metadata artifact。batch baseline、vanilla 和 v1 必须读取同一份
 artifact，不再各自推断。artifact 应记录 RelBench、PyTorch Frame 版本、数据库
 版本和 stype fingerprint。
 
@@ -388,7 +388,7 @@ sampling 已约为 2992 秒，Salt 当前 sampling 也占 train wall 的 45.5%�
 
 1. 单独修复 target leakage。
 2. 验证离线 stype artifact 与官方 `get_stype_proposal()` 输出逐表一致。
-3. 验证 batch baseline、vanilla 和 latest 使用相同的 stype fingerprint。
+3. 验证 batch baseline、vanilla 和 v1 使用相同的 stype fingerprint。
 
 该阶段不以性能为理由改变 RelBench 的字段语义。
 

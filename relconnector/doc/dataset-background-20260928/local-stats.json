@@ -1,0 +1,3407 @@
+{
+  "collected_at": "2026-09-28T03:46:10.672858+00:00",
+  "datasets": [
+    {
+      "dataset": "rel-amazon",
+      "path": "/home/zk/relconnector/relconnector/data/relbench/rel-amazon.sqlite",
+      "sqlite_bytes": 16988098560,
+      "metadata": {
+        "catalog_version": "1",
+        "dataset_name": "rel-amazon",
+        "source": "relbench",
+        "source_spec": "stanford-star/relbench-v1/rel-amazon",
+        "relbench_version": "3.0.1",
+        "source_revision": "",
+        "created_at": "2026-09-25T02:19:43.382215+00:00",
+        "val_timestamp": "2015-10-01T00:00:00",
+        "test_timestamp": "2016-01-01T00:00:00"
+      },
+      "snapshot": "d8e976fd0a4b78877204bc8dfbcfc9a9f7f48600",
+      "source_repo": "stanford-star/relbench-v1",
+      "cutoff": "2016-01-01T00:00:00",
+      "stype_dependencies": {
+        "relbench": "3.0.1",
+        "pytorch-frame": "0.3.0",
+        "pandas": "3.0.5",
+        "numpy": "2.5.3"
+      },
+      "tables": [
+        {
+          "table": "customer",
+          "rows": 1850193,
+          "cutoff_rows": 1850193,
+          "columns": 2,
+          "sqlite_columns": 2,
+          "text_columns": [
+            "customer_name"
+          ],
+          "sql_text_columns": [
+            "customer_name"
+          ],
+          "stypes": {
+            "customer_id": "numerical",
+            "customer_name": "text_embedded"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 27098530,
+          "parquet_rows": 1850193,
+          "parquet_columns": 2
+        },
+        {
+          "table": "product",
+          "rows": 506012,
+          "cutoff_rows": 506012,
+          "columns": 6,
+          "sqlite_columns": 6,
+          "text_columns": [
+            "brand",
+            "title",
+            "description"
+          ],
+          "sql_text_columns": [
+            "category",
+            "brand",
+            "title",
+            "description"
+          ],
+          "stypes": {
+            "product_id": "numerical",
+            "category": "multicategorical",
+            "brand": "text_embedded",
+            "title": "text_embedded",
+            "description": "text_embedded",
+            "price": "numerical"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 206232478,
+          "parquet_rows": 506012,
+          "parquet_columns": 6
+        },
+        {
+          "table": "review",
+          "rows": 20862040,
+          "cutoff_rows": 12644508,
+          "columns": 7,
+          "sqlite_columns": 8,
+          "text_columns": [
+            "review_text",
+            "summary"
+          ],
+          "sql_text_columns": [
+            "review_time",
+            "review_text",
+            "summary"
+          ],
+          "stypes": {
+            "review_time": "timestamp",
+            "customer_id": "numerical",
+            "product_id": "numerical",
+            "rating": "numerical",
+            "verified": "categorical",
+            "review_text": "text_embedded",
+            "summary": "text_embedded"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "review_time",
+          "time_bounds": [
+            "2008-01-01T00:00:00",
+            "2018-09-28T00:00:00"
+          ],
+          "parquet_bytes": 7201695122,
+          "parquet_rows": 20862040,
+          "parquet_columns": 7
+        }
+      ],
+      "tasks": [
+        {
+          "table": "target_item_churn",
+          "rows": 2880545,
+          "columns": 5
+        },
+        {
+          "table": "target_item_ltv",
+          "rows": 3052991,
+          "columns": 5
+        },
+        {
+          "table": "target_review_rating",
+          "rows": 20862040,
+          "columns": 5
+        },
+        {
+          "table": "target_user_churn",
+          "rows": 5470060,
+          "columns": 5
+        },
+        {
+          "table": "target_user_item_purchase",
+          "rows": 5858664,
+          "columns": 5
+        },
+        {
+          "table": "target_user_item_rate",
+          "rows": 4217705,
+          "columns": 5
+        },
+        {
+          "table": "target_user_item_review",
+          "rows": 2568168,
+          "columns": 5
+        },
+        {
+          "table": "target_user_ltv",
+          "rows": 5470060,
+          "columns": 5
+        }
+      ],
+      "rows": 23218245,
+      "cutoff_rows": 15000713,
+      "columns": 15,
+      "sqlite_columns": 16,
+      "parquet_bytes": 7435026130,
+      "text_count": 6,
+      "sql_text_count": 8
+    },
+    {
+      "dataset": "rel-arxiv",
+      "path": "/home/zk/relconnector/relconnector/data/relbench/rel-arxiv.sqlite",
+      "sqlite_bytes": 643686400,
+      "metadata": {
+        "catalog_version": "1",
+        "dataset_name": "rel-arxiv",
+        "source": "relbench",
+        "source_spec": "stanford-star/relbench-v2-extra/rel-arxiv",
+        "relbench_version": "3.0.1",
+        "source_revision": "",
+        "created_at": "2026-09-24T13:46:25.173266+00:00",
+        "val_timestamp": "2022-01-01T00:00:00",
+        "test_timestamp": "2023-01-01T00:00:00"
+      },
+      "snapshot": "071cb21e698ad91537d43ca6282411a6d0e78256",
+      "source_repo": "stanford-star/relbench-v2-extra",
+      "cutoff": "2023-01-01T00:00:00",
+      "stype_dependencies": {
+        "relbench": "3.0.1",
+        "pytorch-frame": "0.3.0",
+        "pandas": "3.0.5",
+        "numpy": "2.5.3"
+      },
+      "tables": [
+        {
+          "table": "authors",
+          "rows": 143691,
+          "cutoff_rows": 143691,
+          "columns": 3,
+          "sqlite_columns": 3,
+          "text_columns": [
+            "Name",
+            "ORCID"
+          ],
+          "sql_text_columns": [
+            "Name",
+            "ORCID"
+          ],
+          "stypes": {
+            "Author_ID": "numerical",
+            "Name": "text_embedded",
+            "ORCID": "text_embedded"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 4449181,
+          "parquet_rows": 143691,
+          "parquet_columns": 3
+        },
+        {
+          "table": "categories",
+          "rows": 53,
+          "cutoff_rows": 53,
+          "columns": 2,
+          "sqlite_columns": 2,
+          "text_columns": [],
+          "sql_text_columns": [],
+          "stypes": {
+            "Category_ID": "numerical",
+            "Category": "numerical"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 2327,
+          "parquet_rows": 53,
+          "parquet_columns": 2
+        },
+        {
+          "table": "citations",
+          "rows": 1595687,
+          "cutoff_rows": 1223361,
+          "columns": 3,
+          "sqlite_columns": 4,
+          "text_columns": [],
+          "sql_text_columns": [
+            "Submission_Date"
+          ],
+          "stypes": {
+            "Paper_ID": "numerical",
+            "References_Paper_ID": "numerical",
+            "Submission_Date": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "Submission_Date",
+          "time_bounds": [
+            "2018-01-01T00:00:00",
+            "2023-12-31T00:00:00"
+          ],
+          "parquet_bytes": 6442385,
+          "parquet_rows": 1595687,
+          "parquet_columns": 3
+        },
+        {
+          "table": "paperAuthors",
+          "rows": 616585,
+          "cutoff_rows": 452251,
+          "columns": 3,
+          "sqlite_columns": 4,
+          "text_columns": [],
+          "sql_text_columns": [
+            "Submission_Date"
+          ],
+          "stypes": {
+            "Paper_ID": "numerical",
+            "Author_ID": "numerical",
+            "Submission_Date": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "Submission_Date",
+          "time_bounds": [
+            "2018-01-01T00:00:00",
+            "2023-12-31T00:00:00"
+          ],
+          "parquet_bytes": 3367953,
+          "parquet_rows": 616585,
+          "parquet_columns": 3
+        },
+        {
+          "table": "paperCategories",
+          "rows": 155061,
+          "cutoff_rows": 133060,
+          "columns": 3,
+          "sqlite_columns": 4,
+          "text_columns": [],
+          "sql_text_columns": [
+            "Submission_Date"
+          ],
+          "stypes": {
+            "Paper_ID": "numerical",
+            "Category_ID": "numerical",
+            "Submission_Date": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "Submission_Date",
+          "time_bounds": [
+            "2018-01-01T00:00:00",
+            "2023-12-31T00:00:00"
+          ],
+          "parquet_bytes": 898799,
+          "parquet_rows": 155061,
+          "parquet_columns": 3
+        },
+        {
+          "table": "papers",
+          "rows": 222769,
+          "cutoff_rows": 193696,
+          "columns": 7,
+          "sqlite_columns": 7,
+          "text_columns": [
+            "arXiv_Code",
+            "Title",
+            "Abstract",
+            "DOI"
+          ],
+          "sql_text_columns": [
+            "arXiv_Code",
+            "Title",
+            "Abstract",
+            "Submission_Date",
+            "DOI"
+          ],
+          "stypes": {
+            "Paper_ID": "numerical",
+            "arXiv_Code": "text_embedded",
+            "Title": "text_embedded",
+            "Abstract": "text_embedded",
+            "Submission_Date": "timestamp",
+            "DOI": "text_embedded",
+            "Primary_Category_ID": "numerical"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "Submission_Date",
+          "time_bounds": [
+            "2018-01-01T00:00:00",
+            "2023-12-31T00:00:00"
+          ],
+          "parquet_bytes": 158025410,
+          "parquet_rows": 222769,
+          "parquet_columns": 7
+        }
+      ],
+      "tasks": [
+        {
+          "table": "target_author_category",
+          "rows": 289439,
+          "columns": 5
+        },
+        {
+          "table": "target_author_publication",
+          "rows": 289439,
+          "columns": 5
+        },
+        {
+          "table": "target_paper_citation",
+          "rows": 883774,
+          "columns": 5
+        },
+        {
+          "table": "target_paper_paper_cocitation",
+          "rows": 399631,
+          "columns": 5
+        }
+      ],
+      "rows": 2733846,
+      "cutoff_rows": 2146112,
+      "columns": 21,
+      "sqlite_columns": 24,
+      "parquet_bytes": 173186055,
+      "text_count": 6,
+      "sql_text_count": 10
+    },
+    {
+      "dataset": "rel-avito",
+      "path": "/home/zk/relconnector/relconnector/data/relbench/rel-avito.sqlite",
+      "sqlite_bytes": 1501802496,
+      "metadata": {
+        "catalog_version": "1",
+        "dataset_name": "rel-avito",
+        "source": "relbench",
+        "source_spec": "stanford-star/relbench-v1/rel-avito",
+        "relbench_version": "3.0.1",
+        "source_revision": "",
+        "created_at": "2026-09-24T13:52:37.008334+00:00",
+        "val_timestamp": "2015-05-08T00:00:00",
+        "test_timestamp": "2015-05-14T00:00:00"
+      },
+      "snapshot": "d8e976fd0a4b78877204bc8dfbcfc9a9f7f48600",
+      "source_repo": "stanford-star/relbench-v1",
+      "cutoff": "2015-05-14T00:00:00",
+      "stype_dependencies": {
+        "relbench": "3.0.1",
+        "pytorch-frame": "0.3.0",
+        "pandas": "3.0.5",
+        "numpy": "2.5.3"
+      },
+      "tables": [
+        {
+          "table": "AdsInfo",
+          "rows": 5960558,
+          "cutoff_rows": 5960558,
+          "columns": 6,
+          "sqlite_columns": 6,
+          "text_columns": [
+            "Title"
+          ],
+          "sql_text_columns": [
+            "Title"
+          ],
+          "stypes": {
+            "AdID": "numerical",
+            "LocationID": "numerical",
+            "CategoryID": "numerical",
+            "Price": "numerical",
+            "Title": "text_embedded",
+            "IsContext": "numerical"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 205698705,
+          "parquet_rows": 5960558,
+          "parquet_columns": 6
+        },
+        {
+          "table": "Category",
+          "rows": 68,
+          "cutoff_rows": 68,
+          "columns": 4,
+          "sqlite_columns": 4,
+          "text_columns": [],
+          "sql_text_columns": [],
+          "stypes": {
+            "CategoryID": "numerical",
+            "Level": "numerical",
+            "ParentCategoryID": "numerical",
+            "SubcategoryID": "numerical"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 3775,
+          "parquet_rows": 68,
+          "parquet_columns": 4
+        },
+        {
+          "table": "Location",
+          "rows": 3512,
+          "cutoff_rows": 3512,
+          "columns": 4,
+          "sqlite_columns": 4,
+          "text_columns": [],
+          "sql_text_columns": [],
+          "stypes": {
+            "LocationID": "numerical",
+            "Level": "numerical",
+            "RegionID": "numerical",
+            "CityID": "numerical"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 44642,
+          "parquet_rows": 3512,
+          "parquet_columns": 4
+        },
+        {
+          "table": "PhoneRequestsStream",
+          "rows": 302974,
+          "cutoff_rows": 244435,
+          "columns": 4,
+          "sqlite_columns": 5,
+          "text_columns": [],
+          "sql_text_columns": [
+            "PhoneRequestDate"
+          ],
+          "stypes": {
+            "UserID": "numerical",
+            "IPID": "numerical",
+            "AdID": "numerical",
+            "PhoneRequestDate": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "PhoneRequestDate",
+          "time_bounds": [
+            "2015-04-25T00:00:08",
+            "2015-05-20T17:55:09"
+          ],
+          "parquet_bytes": 5385901,
+          "parquet_rows": 302974,
+          "parquet_columns": 4
+        },
+        {
+          "table": "SearchInfo",
+          "rows": 2579289,
+          "cutoff_rows": 1987156,
+          "columns": 8,
+          "sqlite_columns": 8,
+          "text_columns": [
+            "SearchQuery"
+          ],
+          "sql_text_columns": [
+            "SearchDate",
+            "SearchQuery"
+          ],
+          "stypes": {
+            "UserID": "numerical",
+            "SearchID": "numerical",
+            "SearchDate": "timestamp",
+            "IPID": "numerical",
+            "IsUserLoggedOn": "numerical",
+            "SearchQuery": "text_embedded",
+            "LocationID": "numerical",
+            "CategoryID": "numerical"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "SearchDate",
+          "time_bounds": [
+            "2015-04-25T00:00:01",
+            "2015-05-20T17:59:56"
+          ],
+          "parquet_bytes": 41237079,
+          "parquet_rows": 2579289,
+          "parquet_columns": 8
+        },
+        {
+          "table": "SearchStream",
+          "rows": 9254702,
+          "cutoff_rows": 7107277,
+          "columns": 7,
+          "sqlite_columns": 8,
+          "text_columns": [],
+          "sql_text_columns": [
+            "SearchDate"
+          ],
+          "stypes": {
+            "SearchID": "numerical",
+            "AdID": "numerical",
+            "Position": "numerical",
+            "ObjectType": "numerical",
+            "HistCTR": "numerical",
+            "IsClick": "numerical",
+            "SearchDate": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "SearchDate",
+          "time_bounds": [
+            "2015-04-25T00:00:01",
+            "2015-05-20T17:59:56"
+          ],
+          "parquet_bytes": 93574840,
+          "parquet_rows": 9254702,
+          "parquet_columns": 7
+        },
+        {
+          "table": "UserInfo",
+          "rows": 98250,
+          "cutoff_rows": 98250,
+          "columns": 5,
+          "sqlite_columns": 5,
+          "text_columns": [],
+          "sql_text_columns": [],
+          "stypes": {
+            "UserID": "numerical",
+            "UserAgentID": "numerical",
+            "UserAgentOSID": "numerical",
+            "UserDeviceID": "numerical",
+            "UserAgentFamilyID": "numerical"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 967239,
+          "parquet_rows": 98250,
+          "parquet_columns": 5
+        },
+        {
+          "table": "VisitStream",
+          "rows": 6454562,
+          "cutoff_rows": 5277861,
+          "columns": 4,
+          "sqlite_columns": 5,
+          "text_columns": [],
+          "sql_text_columns": [
+            "ViewDate"
+          ],
+          "stypes": {
+            "UserID": "numerical",
+            "IPID": "numerical",
+            "AdID": "numerical",
+            "ViewDate": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "ViewDate",
+          "time_bounds": [
+            "2015-04-25T00:00:00",
+            "2015-05-20T17:59:19"
+          ],
+          "parquet_bytes": 77298046,
+          "parquet_rows": 6454562,
+          "parquet_columns": 4
+        }
+      ],
+      "tasks": [
+        {
+          "table": "target_ad_ctr",
+          "rows": 8682,
+          "columns": 5
+        },
+        {
+          "table": "target_searchinfo_isuserloggedon",
+          "rows": 2579289,
+          "columns": 5
+        },
+        {
+          "table": "target_searchstream_click",
+          "rows": 4315120,
+          "columns": 5
+        },
+        {
+          "table": "target_user_ad_visit",
+          "rows": 152724,
+          "columns": 5
+        },
+        {
+          "table": "target_user_clicks",
+          "rows": 128633,
+          "columns": 5
+        },
+        {
+          "table": "target_user_visits",
+          "rows": 152727,
+          "columns": 5
+        }
+      ],
+      "rows": 24653915,
+      "cutoff_rows": 20679117,
+      "columns": 42,
+      "sqlite_columns": 45,
+      "parquet_bytes": 424210227,
+      "text_count": 2,
+      "sql_text_count": 6
+    },
+    {
+      "dataset": "rel-event",
+      "path": "/home/zk/relconnector/relconnector/data/relbench/rel-event.sqlite",
+      "sqlite_bytes": 1496756224,
+      "metadata": {
+        "catalog_version": "1",
+        "dataset_name": "rel-event",
+        "source": "relbench",
+        "source_spec": "stanford-star/relbench-v1/rel-event",
+        "relbench_version": "3.0.1",
+        "source_revision": "",
+        "created_at": "2026-09-24T14:15:44.058941+00:00",
+        "val_timestamp": "2012-11-21T00:00:00",
+        "test_timestamp": "2012-11-29T00:00:00"
+      },
+      "snapshot": "d8e976fd0a4b78877204bc8dfbcfc9a9f7f48600",
+      "source_repo": "stanford-star/relbench-v1",
+      "cutoff": "2012-11-29T00:00:00",
+      "stype_dependencies": {
+        "relbench": "3.0.1",
+        "pytorch-frame": "0.3.0",
+        "pandas": "3.0.5",
+        "numpy": "2.5.3"
+      },
+      "tables": [
+        {
+          "table": "event_attendees",
+          "rows": 11245010,
+          "cutoff_rows": 8430002,
+          "columns": 4,
+          "sqlite_columns": 5,
+          "text_columns": [],
+          "sql_text_columns": [
+            "status",
+            "start_time"
+          ],
+          "stypes": {
+            "event": "numerical",
+            "status": "categorical",
+            "user_id": "numerical",
+            "start_time": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "start_time",
+          "time_bounds": [
+            "2012-05-01T19:30:00",
+            "2015-06-11T00:00:00.001000"
+          ],
+          "parquet_bytes": 1135796,
+          "parquet_rows": 11245010,
+          "parquet_columns": 4
+        },
+        {
+          "table": "event_interest",
+          "rows": 15398,
+          "cutoff_rows": 14978,
+          "columns": 6,
+          "sqlite_columns": 7,
+          "text_columns": [],
+          "sql_text_columns": [
+            "timestamp"
+          ],
+          "stypes": {
+            "user": "numerical",
+            "event": "numerical",
+            "invited": "categorical",
+            "timestamp": "timestamp",
+            "interested": "categorical",
+            "not_interested": "categorical"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "timestamp",
+          "time_bounds": [
+            "2012-04-27T21:41:02.227000",
+            "2012-12-12T12:33:32.985000"
+          ],
+          "parquet_bytes": 155136,
+          "parquet_rows": 15398,
+          "parquet_columns": 6
+        },
+        {
+          "table": "events",
+          "rows": 3137972,
+          "cutoff_rows": 2459811,
+          "columns": 110,
+          "sqlite_columns": 110,
+          "text_columns": [
+            "city",
+            "state",
+            "zip",
+            "country"
+          ],
+          "sql_text_columns": [
+            "start_time",
+            "city",
+            "state",
+            "zip",
+            "country"
+          ],
+          "stypes": {
+            "event_id": "numerical",
+            "start_time": "timestamp",
+            "city": "text_embedded",
+            "state": "text_embedded",
+            "zip": "text_embedded",
+            "country": "text_embedded",
+            "lat": "numerical",
+            "lng": "numerical",
+            "c_1": "numerical",
+            "c_2": "numerical",
+            "c_3": "numerical",
+            "c_4": "numerical",
+            "c_5": "numerical",
+            "c_6": "numerical",
+            "c_7": "numerical",
+            "c_8": "numerical",
+            "c_9": "numerical",
+            "c_10": "numerical",
+            "c_11": "numerical",
+            "c_12": "numerical",
+            "c_13": "numerical",
+            "c_14": "numerical",
+            "c_15": "numerical",
+            "c_16": "numerical",
+            "c_17": "numerical",
+            "c_18": "numerical",
+            "c_19": "numerical",
+            "c_20": "numerical",
+            "c_21": "categorical",
+            "c_22": "numerical",
+            "c_23": "numerical",
+            "c_24": "numerical",
+            "c_25": "numerical",
+            "c_26": "numerical",
+            "c_27": "numerical",
+            "c_28": "numerical",
+            "c_29": "numerical",
+            "c_30": "numerical",
+            "c_31": "numerical",
+            "c_32": "numerical",
+            "c_33": "numerical",
+            "c_34": "numerical",
+            "c_35": "numerical",
+            "c_36": "numerical",
+            "c_37": "numerical",
+            "c_38": "numerical",
+            "c_39": "numerical",
+            "c_40": "categorical",
+            "c_41": "categorical",
+            "c_42": "numerical",
+            "c_43": "numerical",
+            "c_44": "numerical",
+            "c_45": "numerical",
+            "c_46": "numerical",
+            "c_47": "numerical",
+            "c_48": "numerical",
+            "c_49": "numerical",
+            "c_50": "numerical",
+            "c_51": "numerical",
+            "c_52": "numerical",
+            "c_53": "numerical",
+            "c_54": "categorical",
+            "c_55": "numerical",
+            "c_56": "numerical",
+            "c_57": "numerical",
+            "c_58": "numerical",
+            "c_59": "numerical",
+            "c_60": "numerical",
+            "c_61": "numerical",
+            "c_62": "numerical",
+            "c_63": "numerical",
+            "c_64": "numerical",
+            "c_65": "numerical",
+            "c_66": "numerical",
+            "c_67": "numerical",
+            "c_68": "numerical",
+            "c_69": "numerical",
+            "c_70": "numerical",
+            "c_71": "numerical",
+            "c_72": "numerical",
+            "c_73": "categorical",
+            "c_74": "numerical",
+            "c_75": "numerical",
+            "c_76": "numerical",
+            "c_77": "numerical",
+            "c_78": "numerical",
+            "c_79": "numerical",
+            "c_80": "numerical",
+            "c_81": "categorical",
+            "c_82": "categorical",
+            "c_83": "numerical",
+            "c_84": "numerical",
+            "c_85": "numerical",
+            "c_86": "numerical",
+            "c_87": "numerical",
+            "c_88": "numerical",
+            "c_89": "numerical",
+            "c_90": "numerical",
+            "c_91": "categorical",
+            "c_92": "numerical",
+            "c_93": "numerical",
+            "c_94": "numerical",
+            "c_95": "numerical",
+            "c_96": "numerical",
+            "c_97": "numerical",
+            "c_98": "numerical",
+            "c_99": "numerical",
+            "c_100": "numerical",
+            "c_other": "numerical"
+          },
+          "untyped_columns": [
+            "user_id"
+          ],
+          "untyped_nonnull": {
+            "user_id": 1158
+          },
+          "time_column": "start_time",
+          "time_bounds": [
+            "1912-01-01T05:59:24.003000",
+            "2222-02-02T00:00:00.002000"
+          ],
+          "parquet_bytes": 114480441,
+          "parquet_rows": 3137972,
+          "parquet_columns": 110
+        },
+        {
+          "table": "user_friends",
+          "rows": 30386403,
+          "cutoff_rows": 30386403,
+          "columns": 2,
+          "sqlite_columns": 3,
+          "text_columns": [],
+          "sql_text_columns": [],
+          "stypes": {
+            "user": "numerical",
+            "friend": "numerical"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 2109524,
+          "parquet_rows": 30386403,
+          "parquet_columns": 2
+        },
+        {
+          "table": "users",
+          "rows": 38209,
+          "cutoff_rows": 37143,
+          "columns": 7,
+          "sqlite_columns": 7,
+          "text_columns": [
+            "locale",
+            "location"
+          ],
+          "sql_text_columns": [
+            "locale",
+            "gender",
+            "joinedAt",
+            "location"
+          ],
+          "stypes": {
+            "user_id": "numerical",
+            "locale": "text_embedded",
+            "birthyear": "numerical",
+            "gender": "categorical",
+            "joinedAt": "timestamp",
+            "location": "text_embedded",
+            "timezone": "numerical"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "joinedAt",
+          "time_bounds": [
+            "2012-04-13T01:06:25.740000",
+            "2012-12-12T20:00:13.885000"
+          ],
+          "parquet_bytes": 774582,
+          "parquet_rows": 38209,
+          "parquet_columns": 7
+        }
+      ],
+      "tasks": [
+        {
+          "table": "target_event_interest_interested",
+          "rows": 15398,
+          "columns": 5
+        },
+        {
+          "table": "target_event_interest_not_interested",
+          "rows": 15398,
+          "columns": 5
+        },
+        {
+          "table": "target_user_attendance",
+          "rows": 23210,
+          "columns": 5
+        },
+        {
+          "table": "target_user_ignore",
+          "rows": 23210,
+          "columns": 5
+        },
+        {
+          "table": "target_user_repeat",
+          "rows": 3441,
+          "columns": 5
+        },
+        {
+          "table": "target_users_birthyear",
+          "rows": 36670,
+          "columns": 5
+        }
+      ],
+      "rows": 44822992,
+      "cutoff_rows": 41328337,
+      "columns": 129,
+      "sqlite_columns": 132,
+      "parquet_bytes": 118655479,
+      "text_count": 6,
+      "sql_text_count": 12
+    },
+    {
+      "dataset": "rel-f1",
+      "path": "/home/zk/relconnector/relconnector/data/relbench/rel-f1.sqlite",
+      "sqlite_bytes": 6225920,
+      "metadata": {
+        "catalog_version": "1",
+        "dataset_name": "rel-f1",
+        "source": "relbench",
+        "source_spec": "stanford-star/relbench-v1/rel-f1",
+        "relbench_version": "3.0.1",
+        "source_revision": "",
+        "created_at": "2026-09-24T13:44:48.446216+00:00",
+        "val_timestamp": "2005-01-01T00:00:00",
+        "test_timestamp": "2010-01-01T00:00:00"
+      },
+      "snapshot": "d8e976fd0a4b78877204bc8dfbcfc9a9f7f48600",
+      "source_repo": "stanford-star/relbench-v1",
+      "cutoff": "2010-01-01T00:00:00",
+      "stype_dependencies": {
+        "relbench": "3.0.1",
+        "pytorch-frame": "0.3.0",
+        "pandas": "3.0.5",
+        "numpy": "2.5.3"
+      },
+      "tables": [
+        {
+          "table": "circuits",
+          "rows": 77,
+          "cutoff_rows": 77,
+          "columns": 8,
+          "sqlite_columns": 8,
+          "text_columns": [
+            "circuitRef",
+            "name",
+            "location",
+            "country"
+          ],
+          "sql_text_columns": [
+            "circuitRef",
+            "name",
+            "location",
+            "country"
+          ],
+          "stypes": {
+            "circuitId": "numerical",
+            "circuitRef": "text_embedded",
+            "name": "text_embedded",
+            "location": "text_embedded",
+            "country": "text_embedded",
+            "lat": "numerical",
+            "lng": "numerical",
+            "alt": "numerical"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 10623,
+          "parquet_rows": 77,
+          "parquet_columns": 8
+        },
+        {
+          "table": "constructor_results",
+          "rows": 12290,
+          "cutoff_rows": 9408,
+          "columns": 5,
+          "sqlite_columns": 5,
+          "text_columns": [],
+          "sql_text_columns": [
+            "date"
+          ],
+          "stypes": {
+            "constructorResultsId": "numerical",
+            "raceId": "numerical",
+            "constructorId": "numerical",
+            "points": "numerical",
+            "date": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "date",
+          "time_bounds": [
+            "1956-01-22T00:00:00",
+            "2023-07-30T13:00:00"
+          ],
+          "parquet_bytes": 113911,
+          "parquet_rows": 12290,
+          "parquet_columns": 5
+        },
+        {
+          "table": "constructor_standings",
+          "rows": 13051,
+          "cutoff_rows": 10170,
+          "columns": 7,
+          "sqlite_columns": 7,
+          "text_columns": [],
+          "sql_text_columns": [
+            "date"
+          ],
+          "stypes": {
+            "constructorStandingsId": "numerical",
+            "raceId": "numerical",
+            "constructorId": "numerical",
+            "points": "numerical",
+            "position": "numerical",
+            "wins": "numerical",
+            "date": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "date",
+          "time_bounds": [
+            "1958-01-19T00:00:00",
+            "2023-07-30T13:00:00"
+          ],
+          "parquet_bytes": 143374,
+          "parquet_rows": 13051,
+          "parquet_columns": 7
+        },
+        {
+          "table": "constructors",
+          "rows": 211,
+          "cutoff_rows": 211,
+          "columns": 4,
+          "sqlite_columns": 4,
+          "text_columns": [
+            "constructorRef",
+            "name",
+            "nationality"
+          ],
+          "sql_text_columns": [
+            "constructorRef",
+            "name",
+            "nationality"
+          ],
+          "stypes": {
+            "constructorId": "numerical",
+            "constructorRef": "text_embedded",
+            "name": "text_embedded",
+            "nationality": "text_embedded"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 8477,
+          "parquet_rows": 211,
+          "parquet_columns": 4
+        },
+        {
+          "table": "drivers",
+          "rows": 857,
+          "cutoff_rows": 857,
+          "columns": 7,
+          "sqlite_columns": 7,
+          "text_columns": [
+            "driverRef",
+            "code",
+            "forename",
+            "surname",
+            "nationality"
+          ],
+          "sql_text_columns": [
+            "driverRef",
+            "code",
+            "forename",
+            "surname",
+            "dob",
+            "nationality"
+          ],
+          "stypes": {
+            "driverId": "numerical",
+            "driverRef": "text_embedded",
+            "code": "text_embedded",
+            "forename": "text_embedded",
+            "surname": "text_embedded",
+            "dob": "timestamp",
+            "nationality": "text_embedded"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 38814,
+          "parquet_rows": 857,
+          "parquet_columns": 7
+        },
+        {
+          "table": "qualifying",
+          "rows": 9815,
+          "cutoff_rows": 4082,
+          "columns": 7,
+          "sqlite_columns": 7,
+          "text_columns": [],
+          "sql_text_columns": [
+            "date"
+          ],
+          "stypes": {
+            "qualifyId": "numerical",
+            "raceId": "numerical",
+            "driverId": "numerical",
+            "constructorId": "numerical",
+            "number": "numerical",
+            "position": "categorical",
+            "date": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "date",
+          "time_bounds": [
+            "1994-03-26T00:00:00",
+            "2023-07-29T13:00:00"
+          ],
+          "parquet_bytes": 101467,
+          "parquet_rows": 9815,
+          "parquet_columns": 7
+        },
+        {
+          "table": "races",
+          "rows": 1101,
+          "cutoff_rows": 820,
+          "columns": 7,
+          "sqlite_columns": 7,
+          "text_columns": [
+            "name"
+          ],
+          "sql_text_columns": [
+            "name",
+            "date",
+            "time"
+          ],
+          "stypes": {
+            "raceId": "numerical",
+            "year": "categorical",
+            "round": "numerical",
+            "circuitId": "numerical",
+            "name": "text_embedded",
+            "date": "timestamp",
+            "time": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "date",
+          "time_bounds": [
+            "1950-05-13T00:00:00",
+            "2023-11-26T13:00:00"
+          ],
+          "parquet_bytes": 24868,
+          "parquet_rows": 1101,
+          "parquet_columns": 7
+        },
+        {
+          "table": "results",
+          "rows": 26080,
+          "cutoff_rows": 20323,
+          "columns": 15,
+          "sqlite_columns": 15,
+          "text_columns": [],
+          "sql_text_columns": [
+            "date"
+          ],
+          "stypes": {
+            "resultId": "numerical",
+            "raceId": "numerical",
+            "driverId": "numerical",
+            "constructorId": "numerical",
+            "number": "numerical",
+            "grid": "numerical",
+            "position": "numerical",
+            "positionOrder": "numerical",
+            "points": "numerical",
+            "laps": "numerical",
+            "milliseconds": "numerical",
+            "fastestLap": "numerical",
+            "rank": "numerical",
+            "statusId": "numerical",
+            "date": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "date",
+          "time_bounds": [
+            "1950-05-13T00:00:00",
+            "2023-07-30T13:00:00"
+          ],
+          "parquet_bytes": 438901,
+          "parquet_rows": 26080,
+          "parquet_columns": 15
+        },
+        {
+          "table": "standings",
+          "rows": 34124,
+          "cutoff_rows": 28115,
+          "columns": 7,
+          "sqlite_columns": 7,
+          "text_columns": [],
+          "sql_text_columns": [
+            "date"
+          ],
+          "stypes": {
+            "driverStandingsId": "numerical",
+            "raceId": "numerical",
+            "driverId": "numerical",
+            "points": "numerical",
+            "position": "numerical",
+            "wins": "numerical",
+            "date": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "date",
+          "time_bounds": [
+            "1950-05-13T00:00:00",
+            "2023-07-30T13:00:00"
+          ],
+          "parquet_bytes": 344321,
+          "parquet_rows": 34124,
+          "parquet_columns": 7
+        }
+      ],
+      "tasks": [
+        {
+          "table": "target_driver_circuit_compete",
+          "rows": 2703,
+          "columns": 5
+        },
+        {
+          "table": "target_driver_dnf",
+          "rows": 12679,
+          "columns": 5
+        },
+        {
+          "table": "target_driver_position",
+          "rows": 8712,
+          "columns": 5
+        },
+        {
+          "table": "target_driver_top3",
+          "rows": 2667,
+          "columns": 5
+        },
+        {
+          "table": "target_qualifying_position",
+          "rows": 9815,
+          "columns": 5
+        },
+        {
+          "table": "target_results_position",
+          "rows": 15207,
+          "columns": 5
+        }
+      ],
+      "rows": 97606,
+      "cutoff_rows": 74063,
+      "columns": 67,
+      "sqlite_columns": 67,
+      "parquet_bytes": 1224756,
+      "text_count": 13,
+      "sql_text_count": 21
+    },
+    {
+      "dataset": "rel-hm",
+      "path": "/home/zk/relconnector/relconnector/data/relbench/rel-hm.sqlite",
+      "sqlite_bytes": 2297167872,
+      "metadata": {
+        "catalog_version": "1",
+        "dataset_name": "rel-hm",
+        "source": "relbench",
+        "source_spec": "stanford-star/relbench-v1/rel-hm",
+        "relbench_version": "3.0.1",
+        "source_revision": "",
+        "created_at": "2026-09-24T14:44:31.549400+00:00",
+        "val_timestamp": "2020-09-07T00:00:00",
+        "test_timestamp": "2020-09-14T00:00:00"
+      },
+      "snapshot": "d8e976fd0a4b78877204bc8dfbcfc9a9f7f48600",
+      "source_repo": "stanford-star/relbench-v1",
+      "cutoff": "2020-09-14T00:00:00",
+      "stype_dependencies": {
+        "relbench": "3.0.1",
+        "pytorch-frame": "0.3.0",
+        "pandas": "3.0.5",
+        "numpy": "2.5.3"
+      },
+      "tables": [
+        {
+          "table": "article",
+          "rows": 105542,
+          "cutoff_rows": 105542,
+          "columns": 25,
+          "sqlite_columns": 25,
+          "text_columns": [
+            "prod_name",
+            "product_type_name",
+            "product_group_name",
+            "graphical_appearance_name",
+            "colour_group_name",
+            "perceived_colour_value_name",
+            "perceived_colour_master_name",
+            "department_name",
+            "section_name",
+            "detail_desc"
+          ],
+          "sql_text_columns": [
+            "prod_name",
+            "product_type_name",
+            "product_group_name",
+            "graphical_appearance_name",
+            "colour_group_name",
+            "perceived_colour_value_name",
+            "perceived_colour_master_name",
+            "department_name",
+            "index_code",
+            "index_name",
+            "index_group_name",
+            "section_name",
+            "garment_group_name",
+            "detail_desc"
+          ],
+          "stypes": {
+            "article_id": "numerical",
+            "product_code": "numerical",
+            "prod_name": "text_embedded",
+            "product_type_no": "numerical",
+            "product_type_name": "text_embedded",
+            "product_group_name": "text_embedded",
+            "graphical_appearance_no": "numerical",
+            "graphical_appearance_name": "text_embedded",
+            "colour_group_code": "numerical",
+            "colour_group_name": "text_embedded",
+            "perceived_colour_value_id": "numerical",
+            "perceived_colour_value_name": "text_embedded",
+            "perceived_colour_master_id": "numerical",
+            "perceived_colour_master_name": "text_embedded",
+            "department_no": "numerical",
+            "department_name": "text_embedded",
+            "index_code": "categorical",
+            "index_name": "categorical",
+            "index_group_no": "categorical",
+            "index_group_name": "categorical",
+            "section_no": "numerical",
+            "section_name": "text_embedded",
+            "garment_group_no": "categorical",
+            "garment_group_name": "categorical",
+            "detail_desc": "text_embedded"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 6344990,
+          "parquet_rows": 105542,
+          "parquet_columns": 25
+        },
+        {
+          "table": "customer",
+          "rows": 1371980,
+          "cutoff_rows": 1371980,
+          "columns": 7,
+          "sqlite_columns": 7,
+          "text_columns": [
+            "club_member_status",
+            "postal_code"
+          ],
+          "sql_text_columns": [
+            "club_member_status",
+            "fashion_news_frequency",
+            "postal_code"
+          ],
+          "stypes": {
+            "customer_id": "numerical",
+            "FN": "categorical",
+            "Active": "categorical",
+            "club_member_status": "text_embedded",
+            "fashion_news_frequency": "categorical",
+            "age": "numerical",
+            "postal_code": "text_embedded"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 89777474,
+          "parquet_rows": 1371980,
+          "parquet_columns": 7
+        },
+        {
+          "table": "transactions",
+          "rows": 15453651,
+          "cutoff_rows": 15187287,
+          "columns": 5,
+          "sqlite_columns": 6,
+          "text_columns": [],
+          "sql_text_columns": [
+            "t_dat"
+          ],
+          "stypes": {
+            "t_dat": "timestamp",
+            "customer_id": "numerical",
+            "article_id": "numerical",
+            "price": "numerical",
+            "sales_channel_id": "categorical"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "t_dat",
+          "time_bounds": [
+            "2019-09-07T00:00:00",
+            "2020-09-22T00:00:00"
+          ],
+          "parquet_bytes": 91593833,
+          "parquet_rows": 15453651,
+          "parquet_columns": 5
+        }
+      ],
+      "tasks": [
+        {
+          "table": "target_item_sales",
+          "rows": 5699268,
+          "columns": 5
+        },
+        {
+          "table": "target_transactions_price",
+          "rows": 15453651,
+          "columns": 5
+        },
+        {
+          "table": "target_user_churn",
+          "rows": 3983823,
+          "columns": 5
+        },
+        {
+          "table": "target_user_item_purchase",
+          "rows": 4020170,
+          "columns": 5
+        }
+      ],
+      "rows": 16931173,
+      "cutoff_rows": 16664809,
+      "columns": 37,
+      "sqlite_columns": 38,
+      "parquet_bytes": 187716297,
+      "text_count": 12,
+      "sql_text_count": 18
+    },
+    {
+      "dataset": "rel-ratebeer",
+      "path": "/home/zk/relconnector/relconnector/data/relbench/rel-ratebeer.sqlite",
+      "sqlite_bytes": 6661517312,
+      "metadata": {
+        "catalog_version": "1",
+        "dataset_name": "rel-ratebeer",
+        "source": "relbench",
+        "source_spec": "stanford-star/relbench-v2-extra/rel-ratebeer",
+        "relbench_version": "3.0.1",
+        "source_revision": "",
+        "created_at": "2026-09-24T15:39:42.983099+00:00",
+        "val_timestamp": "2018-09-01T00:00:00",
+        "test_timestamp": "2020-01-01T00:00:00"
+      },
+      "snapshot": "071cb21e698ad91537d43ca6282411a6d0e78256",
+      "source_repo": "stanford-star/relbench-v2-extra",
+      "cutoff": "2020-01-01T00:00:00",
+      "stype_dependencies": {
+        "relbench": "3.0.1",
+        "pytorch-frame": "0.3.0",
+        "pandas": "3.0.5",
+        "numpy": "2.5.3"
+      },
+      "tables": [
+        {
+          "table": "availability",
+          "rows": 117424,
+          "cutoff_rows": 117424,
+          "columns": 11,
+          "sqlite_columns": 11,
+          "text_columns": [
+            "postal_code"
+          ],
+          "sql_text_columns": [
+            "postal_code",
+            "created_at"
+          ],
+          "stypes": {
+            "avail_id": "numerical",
+            "beer_id": "numerical",
+            "place_id": "numerical",
+            "postal_code": "text_embedded",
+            "state_id": "numerical",
+            "country_id": "numerical",
+            "created_at": "timestamp",
+            "user_id": "numerical",
+            "is_in_bottle": "categorical",
+            "is_on_tap": "categorical",
+            "is_out": "categorical"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 3338839,
+          "parquet_rows": 117424,
+          "parquet_columns": 11
+        },
+        {
+          "table": "beer_ratings",
+          "rows": 14344128,
+          "cutoff_rows": 11847969,
+          "columns": 14,
+          "sqlite_columns": 14,
+          "text_columns": [
+            "comments",
+            "language"
+          ],
+          "sql_text_columns": [
+            "comments",
+            "created_at",
+            "language"
+          ],
+          "stypes": {
+            "rating_id": "numerical",
+            "user_id": "numerical",
+            "beer_id": "numerical",
+            "aroma": "categorical",
+            "flavor": "numerical",
+            "mouthfeel": "categorical",
+            "appearance": "categorical",
+            "overall": "numerical",
+            "total_score": "numerical",
+            "comments": "text_embedded",
+            "created_at": "timestamp",
+            "description_score": "numerical",
+            "language": "text_embedded"
+          },
+          "untyped_columns": [
+            "availability_id"
+          ],
+          "untyped_nonnull": {
+            "availability_id": 107716
+          },
+          "time_column": "created_at",
+          "time_bounds": [
+            "2000-04-12T06:22:38",
+            "2025-02-03T05:59:42.507000"
+          ],
+          "parquet_bytes": 2295254753,
+          "parquet_rows": 14344128,
+          "parquet_columns": 14
+        },
+        {
+          "table": "beer_styles",
+          "rows": 157,
+          "cutoff_rows": 157,
+          "columns": 6,
+          "sqlite_columns": 6,
+          "text_columns": [
+            "name",
+            "description",
+            "srm_range"
+          ],
+          "sql_text_columns": [
+            "name",
+            "description",
+            "srm_range"
+          ],
+          "stypes": {
+            "style_id": "numerical",
+            "name": "text_embedded",
+            "description": "text_embedded",
+            "parent_style_id": "numerical",
+            "category": "categorical",
+            "srm_range": "text_embedded"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 57456,
+          "parquet_rows": 157,
+          "parquet_columns": 6
+        },
+        {
+          "table": "beer_upcs",
+          "rows": 249348,
+          "cutoff_rows": 249348,
+          "columns": 3,
+          "sqlite_columns": 4,
+          "text_columns": [
+            "upc"
+          ],
+          "sql_text_columns": [
+            "upc"
+          ],
+          "stypes": {
+            "upc": "text_embedded",
+            "beer_id": "numerical",
+            "user_id": "numerical"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 4225514,
+          "parquet_rows": 249348,
+          "parquet_columns": 3
+        },
+        {
+          "table": "beers",
+          "rows": 1191662,
+          "cutoff_rows": 751524,
+          "columns": 20,
+          "sqlite_columns": 20,
+          "text_columns": [
+            "name",
+            "name_plain",
+            "description",
+            "tags",
+            "admin_note"
+          ],
+          "sql_text_columns": [
+            "name",
+            "name_plain",
+            "description",
+            "created_at",
+            "tags",
+            "admin_note"
+          ],
+          "stypes": {
+            "beer_id": "numerical",
+            "name": "text_embedded",
+            "name_plain": "text_embedded",
+            "brewer_id": "numerical",
+            "style_id": "numerical",
+            "alcohol_pct": "numerical",
+            "ibu": "numerical",
+            "is_seasonal": "categorical",
+            "description": "text_embedded",
+            "created_at": "timestamp",
+            "created_by": "numerical",
+            "Unrateable": "numerical",
+            "is_one_off": "categorical",
+            "is_alias": "categorical",
+            "is_verified": "categorical",
+            "is_retired": "categorical",
+            "tags": "text_embedded",
+            "updated_by": "numerical",
+            "admin_note": "text_embedded",
+            "has_pic": "categorical"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "created_at",
+          "time_bounds": [
+            "2000-04-02T00:00:00",
+            "2025-02-03T02:17:32.577000"
+          ],
+          "parquet_bytes": 233256089,
+          "parquet_rows": 1191662,
+          "parquet_columns": 20
+        },
+        {
+          "table": "brewers",
+          "rows": 50013,
+          "cutoff_rows": 50013,
+          "columns": 30,
+          "sqlite_columns": 30,
+          "text_columns": [
+            "name",
+            "description",
+            "name_plain",
+            "address",
+            "city",
+            "zip_code",
+            "website",
+            "facebook",
+            "twitter",
+            "email",
+            "phone",
+            "created_at",
+            "created_by",
+            "out_of_business_date",
+            "hours",
+            "admin_note"
+          ],
+          "sql_text_columns": [
+            "name",
+            "description",
+            "name_plain",
+            "address",
+            "city",
+            "zip_code",
+            "website",
+            "facebook",
+            "twitter",
+            "email",
+            "phone",
+            "opened_at",
+            "created_at",
+            "created_by",
+            "out_of_business_date",
+            "hours",
+            "admin_note"
+          ],
+          "stypes": {
+            "brewer_id": "numerical",
+            "name": "text_embedded",
+            "description": "text_embedded",
+            "name_plain": "text_embedded",
+            "address": "text_embedded",
+            "city": "text_embedded",
+            "state_id": "numerical",
+            "country_id": "numerical",
+            "zip_code": "text_embedded",
+            "type_id": "categorical",
+            "website": "text_embedded",
+            "facebook": "text_embedded",
+            "twitter": "text_embedded",
+            "email": "text_embedded",
+            "phone": "text_embedded",
+            "barrels": "numerical",
+            "opened_at": "timestamp",
+            "created_at": "text_embedded",
+            "created_by": "text_embedded",
+            "beer_jobber_id": "numerical",
+            "has_logo": "categorical",
+            "is_out_of_business": "categorical",
+            "out_of_business_date": "text_embedded",
+            "is_retired": "categorical",
+            "area_code": "numerical",
+            "hours": "text_embedded",
+            "metro_id": "numerical",
+            "region_id": "numerical",
+            "admin_note": "text_embedded",
+            "updated_by": "numerical"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 8541066,
+          "parquet_rows": 50013,
+          "parquet_columns": 30
+        },
+        {
+          "table": "countries",
+          "rows": 251,
+          "cutoff_rows": 251,
+          "columns": 5,
+          "sqlite_columns": 5,
+          "text_columns": [
+            "name",
+            "code"
+          ],
+          "sql_text_columns": [
+            "name",
+            "code",
+            "continent"
+          ],
+          "stypes": {
+            "country_id": "numerical",
+            "name": "text_embedded",
+            "code": "text_embedded",
+            "continent": "categorical",
+            "has_brewer": "categorical"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 8691,
+          "parquet_rows": 251,
+          "parquet_columns": 5
+        },
+        {
+          "table": "favorites",
+          "rows": 212273,
+          "cutoff_rows": 121769,
+          "columns": 5,
+          "sqlite_columns": 5,
+          "text_columns": [],
+          "sql_text_columns": [
+            "created_at"
+          ],
+          "stypes": {
+            "favorite_id": "numerical",
+            "created_at": "timestamp",
+            "user_id": "numerical",
+            "beer_id": "numerical",
+            "list_id": "numerical"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "created_at",
+          "time_bounds": [
+            "2018-05-02T23:05:42.970000",
+            "2025-02-02T21:10:36.083000"
+          ],
+          "parquet_bytes": 4333572,
+          "parquet_rows": 212273,
+          "parquet_columns": 5
+        },
+        {
+          "table": "place_ratings",
+          "rows": 385707,
+          "cutoff_rows": 343179,
+          "columns": 12,
+          "sqlite_columns": 12,
+          "text_columns": [
+            "comments"
+          ],
+          "sql_text_columns": [
+            "comments",
+            "created_at"
+          ],
+          "stypes": {
+            "rating_id": "numerical",
+            "user_id": "numerical",
+            "place_id": "numerical",
+            "ambiance": "categorical",
+            "service": "categorical",
+            "selection": "categorical",
+            "food": "numerical",
+            "value": "numerical",
+            "overall": "numerical",
+            "total_score": "numerical",
+            "comments": "text_embedded",
+            "created_at": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "created_at",
+          "time_bounds": [
+            "2004-01-03T15:28:03",
+            "2025-02-01T20:28:00.260000"
+          ],
+          "parquet_bytes": 95669350,
+          "parquet_rows": 385707,
+          "parquet_columns": 12
+        },
+        {
+          "table": "place_types",
+          "rows": 8,
+          "cutoff_rows": 8,
+          "columns": 2,
+          "sqlite_columns": 2,
+          "text_columns": [
+            "name"
+          ],
+          "sql_text_columns": [
+            "name"
+          ],
+          "stypes": {
+            "type_id": "numerical",
+            "name": "text_embedded"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 1844,
+          "parquet_rows": 8,
+          "parquet_columns": 2
+        },
+        {
+          "table": "places",
+          "rows": 86061,
+          "cutoff_rows": 86061,
+          "columns": 59,
+          "sqlite_columns": 59,
+          "text_columns": [
+            "name",
+            "name_plain",
+            "description",
+            "address",
+            "city",
+            "city_plain",
+            "postal_code",
+            "phone",
+            "website",
+            "facebook",
+            "twitter",
+            "scene",
+            "staff",
+            "parking",
+            "music",
+            "events",
+            "noise",
+            "seating",
+            "food_details",
+            "hours",
+            "created_at",
+            "phone_area_code"
+          ],
+          "sql_text_columns": [
+            "name",
+            "name_plain",
+            "description",
+            "address",
+            "city",
+            "city_plain",
+            "postal_code",
+            "phone",
+            "website",
+            "facebook",
+            "twitter",
+            "scene",
+            "staff",
+            "parking",
+            "music",
+            "events",
+            "noise",
+            "seating",
+            "food_details",
+            "comments",
+            "hours",
+            "created_at",
+            "phone_area_code",
+            "currency"
+          ],
+          "stypes": {
+            "place_id": "numerical",
+            "name": "text_embedded",
+            "name_plain": "text_embedded",
+            "description": "text_embedded",
+            "type_id": "numerical",
+            "address": "text_embedded",
+            "city": "text_embedded",
+            "city_plain": "text_embedded",
+            "state_id": "numerical",
+            "country_id": "numerical",
+            "postal_code": "text_embedded",
+            "phone": "text_embedded",
+            "website": "text_embedded",
+            "facebook": "text_embedded",
+            "twitter": "text_embedded",
+            "has_taps": "categorical",
+            "has_bottles": "categorical",
+            "has_wifi": "categorical",
+            "has_togo": "categorical",
+            "has_singles": "categorical",
+            "has_seasonals": "categorical",
+            "has_real_ales": "categorical",
+            "has_rare_beers": "categorical",
+            "has_macros": "categorical",
+            "has_glassware": "categorical",
+            "has_smoking": "categorical",
+            "has_cigars": "categorical",
+            "allows_children": "categorical",
+            "takes_reservations": "categorical",
+            "has_patio": "categorical",
+            "has_tv": "categorical",
+            "has_games": "categorical",
+            "scene": "text_embedded",
+            "staff": "text_embedded",
+            "parking": "text_embedded",
+            "music": "text_embedded",
+            "events": "text_embedded",
+            "noise": "text_embedded",
+            "seating": "text_embedded",
+            "has_food": "categorical",
+            "food_details": "text_embedded",
+            "comments": "categorical",
+            "hours": "text_embedded",
+            "created_by": "numerical",
+            "updated_by": "numerical",
+            "created_at": "text_embedded",
+            "phone_area_code": "text_embedded",
+            "has_mail_order": "categorical",
+            "has_intl_shipping": "categorical",
+            "is_retired": "categorical",
+            "is_geo_override": "categorical",
+            "latitude": "numerical",
+            "longitude": "numerical",
+            "has_food_menu": "categorical",
+            "has_beer_menu": "categorical",
+            "has_pic": "categorical",
+            "has_flights": "categorical",
+            "creator_id": "categorical"
+          },
+          "untyped_columns": [
+            "currency"
+          ],
+          "untyped_nonnull": {
+            "currency": 2
+          },
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 14829247,
+          "parquet_rows": 86061,
+          "parquet_columns": 59
+        },
+        {
+          "table": "states",
+          "rows": 622,
+          "cutoff_rows": 622,
+          "columns": 4,
+          "sqlite_columns": 4,
+          "text_columns": [
+            "State"
+          ],
+          "sql_text_columns": [
+            "State"
+          ],
+          "stypes": {
+            "state_id": "numerical",
+            "State": "text_embedded",
+            "country_id": "categorical",
+            "hasbrewer": "numerical"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 13525,
+          "parquet_rows": 622,
+          "parquet_columns": 4
+        },
+        {
+          "table": "users",
+          "rows": 236969,
+          "cutoff_rows": 218680,
+          "columns": 3,
+          "sqlite_columns": 3,
+          "text_columns": [],
+          "sql_text_columns": [
+            "created_at",
+            "user_type"
+          ],
+          "stypes": {
+            "user_id": "numerical",
+            "created_at": "timestamp",
+            "user_type": "categorical"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "created_at",
+          "time_bounds": [
+            "2000-04-12T06:22:38",
+            "2025-02-01T16:33:52.927000"
+          ],
+          "parquet_bytes": 3614950,
+          "parquet_rows": 236969,
+          "parquet_columns": 3
+        }
+      ],
+      "tasks": [
+        {
+          "table": "target_beer_churn",
+          "rows": 2642980,
+          "columns": 5
+        },
+        {
+          "table": "target_beer_ratings_total_score",
+          "rows": 14343239,
+          "columns": 5
+        },
+        {
+          "table": "target_brewer_dormant",
+          "rows": 130903,
+          "columns": 5
+        },
+        {
+          "table": "target_user_beer_favorite",
+          "rows": 2641,
+          "columns": 5
+        },
+        {
+          "table": "target_user_beer_liked",
+          "rows": 158786,
+          "columns": 5
+        },
+        {
+          "table": "target_user_churn",
+          "rows": 403009,
+          "columns": 5
+        },
+        {
+          "table": "target_user_count",
+          "rows": 403009,
+          "columns": 5
+        },
+        {
+          "table": "target_user_place_liked",
+          "rows": 39342,
+          "columns": 5
+        }
+      ],
+      "rows": 16874623,
+      "cutoff_rows": 13787005,
+      "columns": 174,
+      "sqlite_columns": 175,
+      "parquet_bytes": 2663144896,
+      "text_count": 55,
+      "sql_text_count": 66
+    },
+    {
+      "dataset": "rel-salt",
+      "path": "/home/zk/relconnector/relconnector/data/relbench/rel-salt.sqlite",
+      "sqlite_bytes": 603009024,
+      "metadata": {
+        "catalog_version": "1",
+        "dataset_name": "rel-salt",
+        "source": "relbench",
+        "source_spec": "stanford-star/relbench-v2-extra/rel-salt",
+        "relbench_version": "3.0.1",
+        "source_revision": "",
+        "created_at": "2026-09-24T15:16:47.566740+00:00",
+        "val_timestamp": "2020-02-01T00:00:00",
+        "test_timestamp": "2020-07-01T00:00:00"
+      },
+      "snapshot": "071cb21e698ad91537d43ca6282411a6d0e78256",
+      "source_repo": "stanford-star/relbench-v2-extra",
+      "cutoff": "2020-07-01T00:00:00",
+      "stype_dependencies": {
+        "relbench": "3.0.1",
+        "pytorch-frame": "0.3.0",
+        "pandas": "3.0.5",
+        "numpy": "2.5.3"
+      },
+      "tables": [
+        {
+          "table": "address",
+          "rows": 1788887,
+          "cutoff_rows": 1788887,
+          "columns": 3,
+          "sqlite_columns": 3,
+          "text_columns": [
+            "COUNTRY",
+            "REGION"
+          ],
+          "sql_text_columns": [
+            "COUNTRY",
+            "REGION"
+          ],
+          "stypes": {
+            "ADDRESSID": "numerical",
+            "COUNTRY": "text_embedded",
+            "REGION": "text_embedded"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 9697599,
+          "parquet_rows": 1788887,
+          "parquet_columns": 3
+        },
+        {
+          "table": "customer",
+          "rows": 139607,
+          "cutoff_rows": 139607,
+          "columns": 2,
+          "sqlite_columns": 2,
+          "text_columns": [],
+          "sql_text_columns": [],
+          "stypes": {
+            "CUSTOMER": "numerical",
+            "ADDRESSID": "numerical"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 1792676,
+          "parquet_rows": 139607,
+          "parquet_columns": 2
+        },
+        {
+          "table": "salesdocument",
+          "rows": 500908,
+          "cutoff_rows": 411966,
+          "columns": 13,
+          "sqlite_columns": 13,
+          "text_columns": [
+            "SALESDOCUMENTTYPE",
+            "BILLINGCOMPANYCODE",
+            "TRANSACTIONCURRENCY"
+          ],
+          "sql_text_columns": [
+            "SALESDOCUMENTTYPE",
+            "SALESORGANIZATION",
+            "DISTRIBUTIONCHANNEL",
+            "ORGANIZATIONDIVISION",
+            "BILLINGCOMPANYCODE",
+            "TRANSACTIONCURRENCY",
+            "CREATIONTIMESTAMP"
+          ],
+          "stypes": {
+            "SALESDOCUMENT": "numerical",
+            "SALESOFFICE": "numerical",
+            "SALESGROUP": "numerical",
+            "CUSTOMERPAYMENTTERMS": "numerical",
+            "SHIPPINGCONDITION": "numerical",
+            "SALESDOCUMENTTYPE": "text_embedded",
+            "SALESORGANIZATION": "timestamp",
+            "DISTRIBUTIONCHANNEL": "categorical",
+            "ORGANIZATIONDIVISION": "categorical",
+            "BILLINGCOMPANYCODE": "text_embedded",
+            "TRANSACTIONCURRENCY": "text_embedded",
+            "HEADERINCOTERMSCLASSIFICATION": "numerical",
+            "CREATIONTIMESTAMP": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "CREATIONTIMESTAMP",
+          "time_bounds": [
+            "2018-01-02T09:22:47",
+            "2020-12-31T20:42:08"
+          ],
+          "parquet_bytes": 8743413,
+          "parquet_rows": 500908,
+          "parquet_columns": 13
+        },
+        {
+          "table": "salesdocumentitem",
+          "rows": 2319540,
+          "cutoff_rows": 1916685,
+          "columns": 13,
+          "sqlite_columns": 13,
+          "text_columns": [
+            "SALESDOCUMENTITEM",
+            "SALESDOCUMENTITEMCATEGORY",
+            "PRODUCT"
+          ],
+          "sql_text_columns": [
+            "SALESDOCUMENTITEM",
+            "SALESDOCUMENTITEMCATEGORY",
+            "PRODUCT",
+            "CREATIONTIMESTAMP"
+          ],
+          "stypes": {
+            "SALESDOCUMENT": "numerical",
+            "SALESDOCUMENTITEM": "text_embedded",
+            "PLANT": "numerical",
+            "SHIPPINGPOINT": "numerical",
+            "SALESDOCUMENTITEMCATEGORY": "text_embedded",
+            "PRODUCT": "text_embedded",
+            "SOLDTOPARTY": "numerical",
+            "SHIPTOPARTY": "numerical",
+            "BILLTOPARTY": "numerical",
+            "PAYERPARTY": "numerical",
+            "ITEMINCOTERMSCLASSIFICATION": "numerical",
+            "CREATIONTIMESTAMP": "timestamp",
+            "ID": "numerical"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "CREATIONTIMESTAMP",
+          "time_bounds": [
+            "2018-01-02T09:22:47",
+            "2020-12-31T20:42:08"
+          ],
+          "parquet_bytes": 42388397,
+          "parquet_rows": 2319540,
+          "parquet_columns": 13
+        }
+      ],
+      "tasks": [
+        {
+          "table": "target_item_incoterms",
+          "rows": 2319540,
+          "columns": 5
+        },
+        {
+          "table": "target_item_plant",
+          "rows": 2319540,
+          "columns": 5
+        },
+        {
+          "table": "target_item_shippoint",
+          "rows": 2319540,
+          "columns": 5
+        },
+        {
+          "table": "target_sales_group",
+          "rows": 500908,
+          "columns": 5
+        },
+        {
+          "table": "target_sales_incoterms",
+          "rows": 500908,
+          "columns": 5
+        },
+        {
+          "table": "target_sales_office",
+          "rows": 500908,
+          "columns": 5
+        },
+        {
+          "table": "target_sales_payterms",
+          "rows": 500908,
+          "columns": 5
+        },
+        {
+          "table": "target_sales_shipcond",
+          "rows": 500908,
+          "columns": 5
+        }
+      ],
+      "rows": 4748942,
+      "cutoff_rows": 4257145,
+      "columns": 31,
+      "sqlite_columns": 31,
+      "parquet_bytes": 62622085,
+      "text_count": 8,
+      "sql_text_count": 13
+    },
+    {
+      "dataset": "rel-stack",
+      "path": "/home/zk/relconnector/relconnector/data/relbench/rel-stack.sqlite",
+      "sqlite_bytes": 2967822336,
+      "metadata": {
+        "catalog_version": "1",
+        "dataset_name": "rel-stack",
+        "source": "relbench",
+        "source_spec": "stanford-star/relbench-v1/rel-stack",
+        "relbench_version": "3.0.1",
+        "source_revision": "",
+        "created_at": "2026-09-24T15:06:19.195761+00:00",
+        "val_timestamp": "2020-10-01T00:00:00",
+        "test_timestamp": "2021-01-01T00:00:00"
+      },
+      "snapshot": "d8e976fd0a4b78877204bc8dfbcfc9a9f7f48600",
+      "source_repo": "stanford-star/relbench-v1",
+      "cutoff": "2021-01-01T00:00:00",
+      "stype_dependencies": {
+        "relbench": "3.0.1",
+        "pytorch-frame": "0.3.0",
+        "pandas": "3.0.5",
+        "numpy": "2.5.3"
+      },
+      "tables": [
+        {
+          "table": "badges",
+          "rows": 590833,
+          "cutoff_rows": 463463,
+          "columns": 6,
+          "sqlite_columns": 6,
+          "text_columns": [
+            "Name"
+          ],
+          "sql_text_columns": [
+            "Name",
+            "Date"
+          ],
+          "stypes": {
+            "Id": "numerical",
+            "UserId": "numerical",
+            "Class": "categorical",
+            "Name": "text_embedded",
+            "TagBased": "categorical",
+            "Date": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "Date",
+          "time_bounds": [
+            "2010-07-19T19:39:07.047000",
+            "2023-09-03T04:52:35.317000"
+          ],
+          "parquet_bytes": 9578357,
+          "parquet_rows": 590833,
+          "parquet_columns": 6
+        },
+        {
+          "table": "comments",
+          "rows": 794597,
+          "cutoff_rows": 623967,
+          "columns": 7,
+          "sqlite_columns": 7,
+          "text_columns": [
+            "UserDisplayName",
+            "Text"
+          ],
+          "sql_text_columns": [
+            "ContentLicense",
+            "UserDisplayName",
+            "Text",
+            "CreationDate"
+          ],
+          "stypes": {
+            "Id": "numerical",
+            "PostId": "numerical",
+            "UserId": "numerical",
+            "ContentLicense": "categorical",
+            "UserDisplayName": "text_embedded",
+            "Text": "text_embedded",
+            "CreationDate": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "CreationDate",
+          "time_bounds": [
+            "2009-02-02T14:45:19.280000",
+            "2023-09-03T04:53:01.357000"
+          ],
+          "parquet_bytes": 127191660,
+          "parquet_rows": 794597,
+          "parquet_columns": 7
+        },
+        {
+          "table": "postHistory",
+          "rows": 1486886,
+          "cutoff_rows": 1175368,
+          "columns": 10,
+          "sqlite_columns": 10,
+          "text_columns": [
+            "UserDisplayName",
+            "RevisionGUID",
+            "Text",
+            "Comment"
+          ],
+          "sql_text_columns": [
+            "UserDisplayName",
+            "ContentLicense",
+            "RevisionGUID",
+            "Text",
+            "Comment",
+            "CreationDate"
+          ],
+          "stypes": {
+            "Id": "numerical",
+            "PostId": "numerical",
+            "UserId": "numerical",
+            "PostHistoryTypeId": "numerical",
+            "UserDisplayName": "text_embedded",
+            "ContentLicense": "categorical",
+            "RevisionGUID": "text_embedded",
+            "Text": "text_embedded",
+            "Comment": "text_embedded",
+            "CreationDate": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "CreationDate",
+          "time_bounds": [
+            "2009-02-02T14:21:12.103000",
+            "2023-09-03T04:51:32.863000"
+          ],
+          "parquet_bytes": 559529290,
+          "parquet_rows": 1486886,
+          "parquet_columns": 10
+        },
+        {
+          "table": "postLinks",
+          "rows": 103969,
+          "cutoff_rows": 77337,
+          "columns": 5,
+          "sqlite_columns": 5,
+          "text_columns": [],
+          "sql_text_columns": [
+            "CreationDate"
+          ],
+          "stypes": {
+            "Id": "numerical",
+            "RelatedPostId": "numerical",
+            "PostId": "numerical",
+            "LinkTypeId": "categorical",
+            "CreationDate": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "CreationDate",
+          "time_bounds": [
+            "2010-07-21T14:47:33.983000",
+            "2023-09-03T02:44:58.893000"
+          ],
+          "parquet_bytes": 2307604,
+          "parquet_rows": 103969,
+          "parquet_columns": 5
+        },
+        {
+          "table": "posts",
+          "rows": 415913,
+          "cutoff_rows": 333893,
+          "columns": 10,
+          "sqlite_columns": 10,
+          "text_columns": [
+            "OwnerDisplayName",
+            "Title",
+            "Tags",
+            "Body"
+          ],
+          "sql_text_columns": [
+            "OwnerDisplayName",
+            "Title",
+            "Tags",
+            "ContentLicense",
+            "Body",
+            "CreationDate"
+          ],
+          "stypes": {
+            "Id": "numerical",
+            "OwnerUserId": "numerical",
+            "PostTypeId": "numerical",
+            "ParentId": "numerical",
+            "OwnerDisplayName": "text_embedded",
+            "Title": "text_embedded",
+            "Tags": "text_embedded",
+            "ContentLicense": "categorical",
+            "Body": "text_embedded",
+            "CreationDate": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "CreationDate",
+          "time_bounds": [
+            "2009-02-02T14:21:12.103000",
+            "2023-09-03T04:49:38.447000"
+          ],
+          "parquet_bytes": 311060383,
+          "parquet_rows": 415913,
+          "parquet_columns": 10
+        },
+        {
+          "table": "users",
+          "rows": 333784,
+          "cutoff_rows": 255360,
+          "columns": 7,
+          "sqlite_columns": 7,
+          "text_columns": [
+            "DisplayName",
+            "Location",
+            "WebsiteUrl",
+            "AboutMe"
+          ],
+          "sql_text_columns": [
+            "DisplayName",
+            "Location",
+            "WebsiteUrl",
+            "AboutMe",
+            "CreationDate"
+          ],
+          "stypes": {
+            "Id": "numerical",
+            "AccountId": "numerical",
+            "DisplayName": "text_embedded",
+            "Location": "text_embedded",
+            "WebsiteUrl": "text_embedded",
+            "AboutMe": "text_embedded",
+            "CreationDate": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "CreationDate",
+          "time_bounds": [
+            "2010-07-19T06:55:26.860000",
+            "2023-09-03T04:50:59.310000"
+          ],
+          "parquet_bytes": 20422011,
+          "parquet_rows": 333784,
+          "parquet_columns": 7
+        },
+        {
+          "table": "votes",
+          "rows": 1673836,
+          "cutoff_rows": 1317876,
+          "columns": 5,
+          "sqlite_columns": 5,
+          "text_columns": [],
+          "sql_text_columns": [
+            "CreationDate"
+          ],
+          "stypes": {
+            "Id": "numerical",
+            "UserId": "numerical",
+            "PostId": "numerical",
+            "VoteTypeId": "numerical",
+            "CreationDate": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "CreationDate",
+          "time_bounds": [
+            "2009-02-02T00:00:00",
+            "2023-09-03T00:00:00"
+          ],
+          "parquet_bytes": 13593311,
+          "parquet_rows": 1673836,
+          "parquet_columns": 5
+        }
+      ],
+      "tasks": [
+        {
+          "table": "target_post_post_related",
+          "rows": 6339,
+          "columns": 5
+        },
+        {
+          "table": "target_post_votes",
+          "rows": 2771171,
+          "columns": 5
+        },
+        {
+          "table": "target_user_badge",
+          "rows": 3889034,
+          "columns": 5
+        },
+        {
+          "table": "target_user_engagement",
+          "rows": 1534825,
+          "columns": 5
+        },
+        {
+          "table": "target_user_post_comment",
+          "rows": 22823,
+          "columns": 5
+        }
+      ],
+      "rows": 5399818,
+      "cutoff_rows": 4247264,
+      "columns": 50,
+      "sqlite_columns": 50,
+      "parquet_bytes": 1043682616,
+      "text_count": 15,
+      "sql_text_count": 25
+    },
+    {
+      "dataset": "rel-trial",
+      "path": "/home/zk/relconnector/relconnector/data/relbench/rel-trial.sqlite",
+      "sqlite_bytes": 1949143040,
+      "metadata": {
+        "catalog_version": "1",
+        "dataset_name": "rel-trial",
+        "source": "relbench",
+        "source_spec": "stanford-star/relbench-v1/rel-trial",
+        "relbench_version": "3.0.1",
+        "source_revision": "",
+        "created_at": "2026-09-24T15:23:23.276762+00:00",
+        "val_timestamp": "2020-01-01T00:00:00",
+        "test_timestamp": "2021-01-01T00:00:00"
+      },
+      "snapshot": "d8e976fd0a4b78877204bc8dfbcfc9a9f7f48600",
+      "source_repo": "stanford-star/relbench-v1",
+      "cutoff": "2021-01-01T00:00:00",
+      "stype_dependencies": {
+        "relbench": "3.0.1",
+        "pytorch-frame": "0.3.0",
+        "pandas": "3.0.5",
+        "numpy": "2.5.3"
+      },
+      "tables": [
+        {
+          "table": "conditions",
+          "rows": 3973,
+          "cutoff_rows": 3973,
+          "columns": 2,
+          "sqlite_columns": 2,
+          "text_columns": [
+            "mesh_term"
+          ],
+          "sql_text_columns": [
+            "mesh_term"
+          ],
+          "stypes": {
+            "condition_id": "numerical",
+            "mesh_term": "text_embedded"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 84126,
+          "parquet_rows": 3973,
+          "parquet_columns": 2
+        },
+        {
+          "table": "conditions_studies",
+          "rows": 440543,
+          "cutoff_rows": 408422,
+          "columns": 4,
+          "sqlite_columns": 4,
+          "text_columns": [],
+          "sql_text_columns": [
+            "date"
+          ],
+          "stypes": {
+            "id": "numerical",
+            "nct_id": "numerical",
+            "condition_id": "numerical",
+            "date": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "date",
+          "time_bounds": [
+            "2000-01-01T00:00:00",
+            "2023-12-08T00:00:00"
+          ],
+          "parquet_bytes": 4446528,
+          "parquet_rows": 440543,
+          "parquet_columns": 4
+        },
+        {
+          "table": "designs",
+          "rows": 272521,
+          "cutoff_rows": 249093,
+          "columns": 15,
+          "sqlite_columns": 15,
+          "text_columns": [
+            "observational_model",
+            "primary_purpose",
+            "time_perspective",
+            "masking_description",
+            "intervention_model_description"
+          ],
+          "sql_text_columns": [
+            "allocation",
+            "intervention_model",
+            "observational_model",
+            "primary_purpose",
+            "time_perspective",
+            "masking",
+            "masking_description",
+            "intervention_model_description",
+            "subject_masked",
+            "caregiver_masked",
+            "investigator_masked",
+            "outcomes_assessor_masked",
+            "date"
+          ],
+          "stypes": {
+            "id": "numerical",
+            "nct_id": "numerical",
+            "allocation": "categorical",
+            "intervention_model": "categorical",
+            "observational_model": "text_embedded",
+            "primary_purpose": "text_embedded",
+            "time_perspective": "text_embedded",
+            "masking": "categorical",
+            "masking_description": "text_embedded",
+            "intervention_model_description": "text_embedded",
+            "subject_masked": "categorical",
+            "caregiver_masked": "categorical",
+            "investigator_masked": "categorical",
+            "outcomes_assessor_masked": "categorical",
+            "date": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "date",
+          "time_bounds": [
+            "2000-01-01T00:00:00",
+            "2023-12-11T00:00:00"
+          ],
+          "parquet_bytes": 8075650,
+          "parquet_rows": 272521,
+          "parquet_columns": 15
+        },
+        {
+          "table": "drop_withdrawals",
+          "rows": 440547,
+          "cutoff_rows": 381199,
+          "columns": 6,
+          "sqlite_columns": 6,
+          "text_columns": [
+            "period",
+            "reason"
+          ],
+          "sql_text_columns": [
+            "period",
+            "reason",
+            "date"
+          ],
+          "stypes": {
+            "id": "numerical",
+            "nct_id": "numerical",
+            "period": "text_embedded",
+            "reason": "text_embedded",
+            "count": "numerical",
+            "date": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "date",
+          "time_bounds": [
+            "2000-05-31T00:00:00",
+            "2023-12-06T00:00:00"
+          ],
+          "parquet_bytes": 4580061,
+          "parquet_rows": 440547,
+          "parquet_columns": 6
+        },
+        {
+          "table": "eligibilities",
+          "rows": 273160,
+          "cutoff_rows": 249730,
+          "columns": 15,
+          "sqlite_columns": 15,
+          "text_columns": [
+            "minimum_age",
+            "maximum_age",
+            "population",
+            "criteria",
+            "gender_description"
+          ],
+          "sql_text_columns": [
+            "sampling_method",
+            "gender",
+            "minimum_age",
+            "maximum_age",
+            "healthy_volunteers",
+            "population",
+            "criteria",
+            "gender_description",
+            "gender_based",
+            "adult",
+            "child",
+            "older_adult",
+            "date"
+          ],
+          "stypes": {
+            "id": "numerical",
+            "nct_id": "numerical",
+            "sampling_method": "categorical",
+            "gender": "categorical",
+            "minimum_age": "text_embedded",
+            "maximum_age": "text_embedded",
+            "healthy_volunteers": "categorical",
+            "population": "text_embedded",
+            "criteria": "text_embedded",
+            "gender_description": "text_embedded",
+            "gender_based": "categorical",
+            "adult": "categorical",
+            "child": "categorical",
+            "older_adult": "categorical",
+            "date": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "date",
+          "time_bounds": [
+            "2000-01-01T00:00:00",
+            "2023-12-11T00:00:00"
+          ],
+          "parquet_bytes": 195919050,
+          "parquet_rows": 273160,
+          "parquet_columns": 15
+        },
+        {
+          "table": "facilities",
+          "rows": 453233,
+          "cutoff_rows": 453233,
+          "columns": 6,
+          "sqlite_columns": 6,
+          "text_columns": [
+            "name",
+            "city",
+            "state",
+            "zip",
+            "country"
+          ],
+          "sql_text_columns": [
+            "name",
+            "city",
+            "state",
+            "zip",
+            "country"
+          ],
+          "stypes": {
+            "facility_id": "numerical",
+            "name": "text_embedded",
+            "city": "text_embedded",
+            "state": "text_embedded",
+            "zip": "text_embedded",
+            "country": "text_embedded"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 15147193,
+          "parquet_rows": 453233,
+          "parquet_columns": 6
+        },
+        {
+          "table": "facilities_studies",
+          "rows": 1867226,
+          "cutoff_rows": 1798765,
+          "columns": 4,
+          "sqlite_columns": 4,
+          "text_columns": [],
+          "sql_text_columns": [
+            "date"
+          ],
+          "stypes": {
+            "id": "numerical",
+            "nct_id": "numerical",
+            "facility_id": "numerical",
+            "date": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "date",
+          "time_bounds": [
+            "2000-01-01T00:00:00",
+            "2023-12-11T00:00:00"
+          ],
+          "parquet_bytes": 17131756,
+          "parquet_rows": 1867226,
+          "parquet_columns": 4
+        },
+        {
+          "table": "interventions",
+          "rows": 3462,
+          "cutoff_rows": 3462,
+          "columns": 2,
+          "sqlite_columns": 2,
+          "text_columns": [
+            "mesh_term"
+          ],
+          "sql_text_columns": [
+            "mesh_term"
+          ],
+          "stypes": {
+            "intervention_id": "numerical",
+            "mesh_term": "text_embedded"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 69954,
+          "parquet_rows": 3462,
+          "parquet_columns": 2
+        },
+        {
+          "table": "interventions_studies",
+          "rows": 179738,
+          "cutoff_rows": 171771,
+          "columns": 4,
+          "sqlite_columns": 4,
+          "text_columns": [],
+          "sql_text_columns": [
+            "date"
+          ],
+          "stypes": {
+            "id": "numerical",
+            "nct_id": "numerical",
+            "intervention_id": "numerical",
+            "date": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "date",
+          "time_bounds": [
+            "2000-01-01T00:00:00",
+            "2023-12-08T00:00:00"
+          ],
+          "parquet_bytes": 2124734,
+          "parquet_rows": 179738,
+          "parquet_columns": 4
+        },
+        {
+          "table": "outcome_analyses",
+          "rows": 254420,
+          "cutoff_rows": 225846,
+          "columns": 23,
+          "sqlite_columns": 23,
+          "text_columns": [
+            "non_inferiority_description",
+            "param_type",
+            "ci_upper_limit_na_comment",
+            "p_value_description",
+            "method",
+            "method_description",
+            "estimate_description",
+            "groups_description",
+            "other_analysis_description"
+          ],
+          "sql_text_columns": [
+            "non_inferiority_type",
+            "non_inferiority_description",
+            "param_type",
+            "dispersion_type",
+            "p_value_modifier",
+            "ci_n_sides",
+            "ci_upper_limit_na_comment",
+            "p_value_description",
+            "method",
+            "method_description",
+            "estimate_description",
+            "groups_description",
+            "other_analysis_description",
+            "date"
+          ],
+          "stypes": {
+            "id": "numerical",
+            "nct_id": "numerical",
+            "outcome_id": "numerical",
+            "non_inferiority_type": "categorical",
+            "non_inferiority_description": "text_embedded",
+            "param_type": "text_embedded",
+            "param_value": "numerical",
+            "dispersion_type": "categorical",
+            "dispersion_value": "numerical",
+            "p_value_modifier": "categorical",
+            "p_value": "numerical",
+            "ci_n_sides": "categorical",
+            "ci_percent": "numerical",
+            "ci_lower_limit": "numerical",
+            "ci_upper_limit": "numerical",
+            "ci_upper_limit_na_comment": "text_embedded",
+            "p_value_description": "text_embedded",
+            "method": "text_embedded",
+            "method_description": "text_embedded",
+            "estimate_description": "text_embedded",
+            "groups_description": "text_embedded",
+            "other_analysis_description": "text_embedded",
+            "date": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "date",
+          "time_bounds": [
+            "2000-07-31T00:00:00",
+            "2023-12-06T00:00:00"
+          ],
+          "parquet_bytes": 12321386,
+          "parquet_rows": 254420,
+          "parquet_columns": 23
+        },
+        {
+          "table": "outcomes",
+          "rows": 476790,
+          "cutoff_rows": 411933,
+          "columns": 12,
+          "sqlite_columns": 12,
+          "text_columns": [
+            "outcome_type",
+            "title",
+            "description",
+            "time_frame",
+            "population",
+            "units",
+            "units_analyzed",
+            "dispersion_type",
+            "param_type"
+          ],
+          "sql_text_columns": [
+            "outcome_type",
+            "title",
+            "description",
+            "time_frame",
+            "population",
+            "units",
+            "units_analyzed",
+            "dispersion_type",
+            "param_type",
+            "date"
+          ],
+          "stypes": {
+            "id": "numerical",
+            "nct_id": "numerical",
+            "outcome_type": "text_embedded",
+            "title": "text_embedded",
+            "description": "text_embedded",
+            "time_frame": "text_embedded",
+            "population": "text_embedded",
+            "units": "text_embedded",
+            "units_analyzed": "text_embedded",
+            "dispersion_type": "text_embedded",
+            "param_type": "text_embedded",
+            "date": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "date",
+          "time_bounds": [
+            "2000-05-31T00:00:00",
+            "2023-12-08T00:00:00"
+          ],
+          "parquet_bytes": 90583448,
+          "parquet_rows": 476790,
+          "parquet_columns": 12
+        },
+        {
+          "table": "reported_event_totals",
+          "rows": 435129,
+          "cutoff_rows": 383064,
+          "columns": 7,
+          "sqlite_columns": 7,
+          "text_columns": [],
+          "sql_text_columns": [
+            "event_type",
+            "classification",
+            "date"
+          ],
+          "stypes": {
+            "id": "numerical",
+            "nct_id": "numerical",
+            "event_type": "categorical",
+            "classification": "categorical",
+            "subjects_affected": "numerical",
+            "subjects_at_risk": "numerical",
+            "date": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "date",
+          "time_bounds": [
+            "2000-05-31T00:00:00",
+            "2023-12-08T00:00:00"
+          ],
+          "parquet_bytes": 4134338,
+          "parquet_rows": 435129,
+          "parquet_columns": 7
+        },
+        {
+          "table": "sponsors",
+          "rows": 53241,
+          "cutoff_rows": 53241,
+          "columns": 3,
+          "sqlite_columns": 3,
+          "text_columns": [
+            "name",
+            "agency_class"
+          ],
+          "sql_text_columns": [
+            "name",
+            "agency_class"
+          ],
+          "stypes": {
+            "sponsor_id": "numerical",
+            "name": "text_embedded",
+            "agency_class": "text_embedded"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": null,
+          "time_bounds": null,
+          "parquet_bytes": 1541923,
+          "parquet_rows": 53241,
+          "parquet_columns": 3
+        },
+        {
+          "table": "sponsors_studies",
+          "rows": 425014,
+          "cutoff_rows": 391462,
+          "columns": 5,
+          "sqlite_columns": 5,
+          "text_columns": [],
+          "sql_text_columns": [
+            "lead_or_collaborator",
+            "date"
+          ],
+          "stypes": {
+            "id": "numerical",
+            "nct_id": "numerical",
+            "sponsor_id": "numerical",
+            "lead_or_collaborator": "categorical",
+            "date": "timestamp"
+          },
+          "untyped_columns": [],
+          "untyped_nonnull": {},
+          "time_column": "date",
+          "time_bounds": [
+            "2000-01-01T00:00:00",
+            "2023-12-11T00:00:00"
+          ],
+          "parquet_bytes": 4901191,
+          "parquet_rows": 425014,
+          "parquet_columns": 5
+        },
+        {
+          "table": "studies",
+          "rows": 273160,
+          "cutoff_rows": 249730,
+          "columns": 28,
+          "sqlite_columns": 28,
+          "text_columns": [
+            "target_duration",
+            "acronym",
+            "baseline_population",
+            "brief_title",
+            "official_title",
+            "source",
+            "biospec_retention",
+            "biospec_description",
+            "source_class",
+            "baseline_type_units_analyzed",
+            "detailed_descriptions",
+            "brief_summaries"
+          ],
+          "sql_text_columns": [
+            "start_date",
+            "target_duration",
+            "study_type",
+            "acronym",
+            "baseline_population",
+            "brief_title",
+            "official_title",
+            "phase",
+            "enrollment_type",
+            "source",
+            "has_dmc",
+            "is_fda_regulated_drug",
+            "is_fda_regulated_device",
+            "is_unapproved_device",
+            "is_ppsd",
+            "is_us_export",
+            "biospec_retention",
+            "biospec_description",
+            "source_class",
+            "baseline_type_units_analyzed",
+            "fdaaa801_violation",
+            "plan_to_share_ipd",
+            "detailed_descriptions",
+            "brief_summaries"
+          ],
+          "stypes": {
+            "nct_id": "numerical",
+            "start_date": "timestamp",
+            "target_duration": "text_embedded",
+            "study_type": "categorical",
+            "acronym": "text_embedded",
+            "baseline_population": "text_embedded",
+            "brief_title": "text_embedded",
+            "official_title": "text_embedded",
+            "phase": "categorical",
+            "enrollment": "numerical",
+            "enrollment_type": "categorical",
+            "source": "text_embedded",
+            "number_of_arms": "numerical",
+            "number_of_groups": "numerical",
+            "has_dmc": "categorical",
+            "is_fda_regulated_drug": "categorical",
+            "is_fda_regulated_device": "categorical",
+            "is_unapproved_device": "categorical",
+            "is_us_export": "categorical",
+            "biospec_retention": "text_embedded",
+            "biospec_description": "text_embedded",
+            "source_class": "text_embedded",
+            "baseline_type_units_analyzed": "text_embedded",
+            "plan_to_share_ipd": "categorical",
+            "detailed_descriptions": "text_embedded",
+            "brief_summaries": "text_embedded"
+          },
+          "untyped_columns": [
+            "is_ppsd",
+            "fdaaa801_violation"
+          ],
+          "untyped_nonnull": {
+            "is_ppsd": 4,
+            "fdaaa801_violation": 5
+          },
+          "time_column": "start_date",
+          "time_bounds": [
+            "2000-01-01T00:00:00",
+            "2023-12-11T00:00:00"
+          ],
+          "parquet_bytes": 312608243,
+          "parquet_rows": 273160,
+          "parquet_columns": 28
+        }
+      ],
+      "tasks": [
+        {
+          "table": "target_condition_sponsor_run",
+          "rows": 41072,
+          "columns": 5
+        },
+        {
+          "table": "target_eligibilities_adult",
+          "rows": 273160,
+          "columns": 5
+        },
+        {
+          "table": "target_eligibilities_child",
+          "rows": 273160,
+          "columns": 5
+        },
+        {
+          "table": "target_site_sponsor_run",
+          "rows": 733741,
+          "columns": 5
+        },
+        {
+          "table": "target_site_success",
+          "rows": 193764,
+          "columns": 5
+        },
+        {
+          "table": "target_studies_enrollment",
+          "rows": 271866,
+          "columns": 5
+        },
+        {
+          "table": "target_studies_has_dmc",
+          "rows": 234467,
+          "columns": 5
+        },
+        {
+          "table": "target_study_adverse",
+          "rows": 50029,
+          "columns": 5
+        },
+        {
+          "table": "target_study_outcome",
+          "rows": 13779,
+          "columns": 5
+        }
+      ],
+      "rows": 5852157,
+      "cutoff_rows": 5434924,
+      "columns": 136,
+      "sqlite_columns": 136,
+      "parquet_bytes": 673669581,
+      "text_count": 51,
+      "sql_text_count": 94
+    }
+  ]
+}

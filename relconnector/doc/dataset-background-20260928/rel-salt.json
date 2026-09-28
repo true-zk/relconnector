@@ -1,0 +1,212 @@
+{
+  "dataset": "rel-salt",
+  "path": "/home/zk/relconnector/relconnector/data/relbench/rel-salt.sqlite",
+  "sqlite_bytes": 603009024,
+  "metadata": {
+    "catalog_version": "1",
+    "dataset_name": "rel-salt",
+    "source": "relbench",
+    "source_spec": "stanford-star/relbench-v2-extra/rel-salt",
+    "relbench_version": "3.0.1",
+    "source_revision": "",
+    "created_at": "2026-09-24T15:16:47.566740+00:00",
+    "val_timestamp": "2020-02-01T00:00:00",
+    "test_timestamp": "2020-07-01T00:00:00"
+  },
+  "snapshot": "071cb21e698ad91537d43ca6282411a6d0e78256",
+  "source_repo": "stanford-star/relbench-v2-extra",
+  "cutoff": "2020-07-01T00:00:00",
+  "stype_dependencies": {
+    "relbench": "3.0.1",
+    "pytorch-frame": "0.3.0",
+    "pandas": "3.0.5",
+    "numpy": "2.5.3"
+  },
+  "tables": [
+    {
+      "table": "address",
+      "rows": 1788887,
+      "cutoff_rows": 1788887,
+      "columns": 3,
+      "sqlite_columns": 3,
+      "text_columns": [
+        "COUNTRY",
+        "REGION"
+      ],
+      "sql_text_columns": [
+        "COUNTRY",
+        "REGION"
+      ],
+      "stypes": {
+        "ADDRESSID": "numerical",
+        "COUNTRY": "text_embedded",
+        "REGION": "text_embedded"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": null,
+      "time_bounds": null,
+      "parquet_bytes": 9697599,
+      "parquet_rows": 1788887,
+      "parquet_columns": 3
+    },
+    {
+      "table": "customer",
+      "rows": 139607,
+      "cutoff_rows": 139607,
+      "columns": 2,
+      "sqlite_columns": 2,
+      "text_columns": [],
+      "sql_text_columns": [],
+      "stypes": {
+        "CUSTOMER": "numerical",
+        "ADDRESSID": "numerical"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": null,
+      "time_bounds": null,
+      "parquet_bytes": 1792676,
+      "parquet_rows": 139607,
+      "parquet_columns": 2
+    },
+    {
+      "table": "salesdocument",
+      "rows": 500908,
+      "cutoff_rows": 411966,
+      "columns": 13,
+      "sqlite_columns": 13,
+      "text_columns": [
+        "SALESDOCUMENTTYPE",
+        "BILLINGCOMPANYCODE",
+        "TRANSACTIONCURRENCY"
+      ],
+      "sql_text_columns": [
+        "SALESDOCUMENTTYPE",
+        "SALESORGANIZATION",
+        "DISTRIBUTIONCHANNEL",
+        "ORGANIZATIONDIVISION",
+        "BILLINGCOMPANYCODE",
+        "TRANSACTIONCURRENCY",
+        "CREATIONTIMESTAMP"
+      ],
+      "stypes": {
+        "SALESDOCUMENT": "numerical",
+        "SALESOFFICE": "numerical",
+        "SALESGROUP": "numerical",
+        "CUSTOMERPAYMENTTERMS": "numerical",
+        "SHIPPINGCONDITION": "numerical",
+        "SALESDOCUMENTTYPE": "text_embedded",
+        "SALESORGANIZATION": "timestamp",
+        "DISTRIBUTIONCHANNEL": "categorical",
+        "ORGANIZATIONDIVISION": "categorical",
+        "BILLINGCOMPANYCODE": "text_embedded",
+        "TRANSACTIONCURRENCY": "text_embedded",
+        "HEADERINCOTERMSCLASSIFICATION": "numerical",
+        "CREATIONTIMESTAMP": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "CREATIONTIMESTAMP",
+      "time_bounds": [
+        "2018-01-02T09:22:47",
+        "2020-12-31T20:42:08"
+      ],
+      "parquet_bytes": 8743413,
+      "parquet_rows": 500908,
+      "parquet_columns": 13
+    },
+    {
+      "table": "salesdocumentitem",
+      "rows": 2319540,
+      "cutoff_rows": 1916685,
+      "columns": 13,
+      "sqlite_columns": 13,
+      "text_columns": [
+        "SALESDOCUMENTITEM",
+        "SALESDOCUMENTITEMCATEGORY",
+        "PRODUCT"
+      ],
+      "sql_text_columns": [
+        "SALESDOCUMENTITEM",
+        "SALESDOCUMENTITEMCATEGORY",
+        "PRODUCT",
+        "CREATIONTIMESTAMP"
+      ],
+      "stypes": {
+        "SALESDOCUMENT": "numerical",
+        "SALESDOCUMENTITEM": "text_embedded",
+        "PLANT": "numerical",
+        "SHIPPINGPOINT": "numerical",
+        "SALESDOCUMENTITEMCATEGORY": "text_embedded",
+        "PRODUCT": "text_embedded",
+        "SOLDTOPARTY": "numerical",
+        "SHIPTOPARTY": "numerical",
+        "BILLTOPARTY": "numerical",
+        "PAYERPARTY": "numerical",
+        "ITEMINCOTERMSCLASSIFICATION": "numerical",
+        "CREATIONTIMESTAMP": "timestamp",
+        "ID": "numerical"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "CREATIONTIMESTAMP",
+      "time_bounds": [
+        "2018-01-02T09:22:47",
+        "2020-12-31T20:42:08"
+      ],
+      "parquet_bytes": 42388397,
+      "parquet_rows": 2319540,
+      "parquet_columns": 13
+    }
+  ],
+  "tasks": [
+    {
+      "table": "target_item_incoterms",
+      "rows": 2319540,
+      "columns": 5
+    },
+    {
+      "table": "target_item_plant",
+      "rows": 2319540,
+      "columns": 5
+    },
+    {
+      "table": "target_item_shippoint",
+      "rows": 2319540,
+      "columns": 5
+    },
+    {
+      "table": "target_sales_group",
+      "rows": 500908,
+      "columns": 5
+    },
+    {
+      "table": "target_sales_incoterms",
+      "rows": 500908,
+      "columns": 5
+    },
+    {
+      "table": "target_sales_office",
+      "rows": 500908,
+      "columns": 5
+    },
+    {
+      "table": "target_sales_payterms",
+      "rows": 500908,
+      "columns": 5
+    },
+    {
+      "table": "target_sales_shipcond",
+      "rows": 500908,
+      "columns": 5
+    }
+  ],
+  "rows": 4748942,
+  "cutoff_rows": 4257145,
+  "columns": 31,
+  "sqlite_columns": 31,
+  "parquet_bytes": 62622085,
+  "text_count": 8,
+  "sql_text_count": 13
+}

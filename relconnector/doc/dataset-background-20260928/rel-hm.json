@@ -1,0 +1,185 @@
+{
+  "dataset": "rel-hm",
+  "path": "/home/zk/relconnector/relconnector/data/relbench/rel-hm.sqlite",
+  "sqlite_bytes": 2297167872,
+  "metadata": {
+    "catalog_version": "1",
+    "dataset_name": "rel-hm",
+    "source": "relbench",
+    "source_spec": "stanford-star/relbench-v1/rel-hm",
+    "relbench_version": "3.0.1",
+    "source_revision": "",
+    "created_at": "2026-09-24T14:44:31.549400+00:00",
+    "val_timestamp": "2020-09-07T00:00:00",
+    "test_timestamp": "2020-09-14T00:00:00"
+  },
+  "snapshot": "d8e976fd0a4b78877204bc8dfbcfc9a9f7f48600",
+  "source_repo": "stanford-star/relbench-v1",
+  "cutoff": "2020-09-14T00:00:00",
+  "stype_dependencies": {
+    "relbench": "3.0.1",
+    "pytorch-frame": "0.3.0",
+    "pandas": "3.0.5",
+    "numpy": "2.5.3"
+  },
+  "tables": [
+    {
+      "table": "article",
+      "rows": 105542,
+      "cutoff_rows": 105542,
+      "columns": 25,
+      "sqlite_columns": 25,
+      "text_columns": [
+        "prod_name",
+        "product_type_name",
+        "product_group_name",
+        "graphical_appearance_name",
+        "colour_group_name",
+        "perceived_colour_value_name",
+        "perceived_colour_master_name",
+        "department_name",
+        "section_name",
+        "detail_desc"
+      ],
+      "sql_text_columns": [
+        "prod_name",
+        "product_type_name",
+        "product_group_name",
+        "graphical_appearance_name",
+        "colour_group_name",
+        "perceived_colour_value_name",
+        "perceived_colour_master_name",
+        "department_name",
+        "index_code",
+        "index_name",
+        "index_group_name",
+        "section_name",
+        "garment_group_name",
+        "detail_desc"
+      ],
+      "stypes": {
+        "article_id": "numerical",
+        "product_code": "numerical",
+        "prod_name": "text_embedded",
+        "product_type_no": "numerical",
+        "product_type_name": "text_embedded",
+        "product_group_name": "text_embedded",
+        "graphical_appearance_no": "numerical",
+        "graphical_appearance_name": "text_embedded",
+        "colour_group_code": "numerical",
+        "colour_group_name": "text_embedded",
+        "perceived_colour_value_id": "numerical",
+        "perceived_colour_value_name": "text_embedded",
+        "perceived_colour_master_id": "numerical",
+        "perceived_colour_master_name": "text_embedded",
+        "department_no": "numerical",
+        "department_name": "text_embedded",
+        "index_code": "categorical",
+        "index_name": "categorical",
+        "index_group_no": "categorical",
+        "index_group_name": "categorical",
+        "section_no": "numerical",
+        "section_name": "text_embedded",
+        "garment_group_no": "categorical",
+        "garment_group_name": "categorical",
+        "detail_desc": "text_embedded"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": null,
+      "time_bounds": null,
+      "parquet_bytes": 6344990,
+      "parquet_rows": 105542,
+      "parquet_columns": 25
+    },
+    {
+      "table": "customer",
+      "rows": 1371980,
+      "cutoff_rows": 1371980,
+      "columns": 7,
+      "sqlite_columns": 7,
+      "text_columns": [
+        "club_member_status",
+        "postal_code"
+      ],
+      "sql_text_columns": [
+        "club_member_status",
+        "fashion_news_frequency",
+        "postal_code"
+      ],
+      "stypes": {
+        "customer_id": "numerical",
+        "FN": "categorical",
+        "Active": "categorical",
+        "club_member_status": "text_embedded",
+        "fashion_news_frequency": "categorical",
+        "age": "numerical",
+        "postal_code": "text_embedded"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": null,
+      "time_bounds": null,
+      "parquet_bytes": 89777474,
+      "parquet_rows": 1371980,
+      "parquet_columns": 7
+    },
+    {
+      "table": "transactions",
+      "rows": 15453651,
+      "cutoff_rows": 15187287,
+      "columns": 5,
+      "sqlite_columns": 6,
+      "text_columns": [],
+      "sql_text_columns": [
+        "t_dat"
+      ],
+      "stypes": {
+        "t_dat": "timestamp",
+        "customer_id": "numerical",
+        "article_id": "numerical",
+        "price": "numerical",
+        "sales_channel_id": "categorical"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "t_dat",
+      "time_bounds": [
+        "2019-09-07T00:00:00",
+        "2020-09-22T00:00:00"
+      ],
+      "parquet_bytes": 91593833,
+      "parquet_rows": 15453651,
+      "parquet_columns": 5
+    }
+  ],
+  "tasks": [
+    {
+      "table": "target_item_sales",
+      "rows": 5699268,
+      "columns": 5
+    },
+    {
+      "table": "target_transactions_price",
+      "rows": 15453651,
+      "columns": 5
+    },
+    {
+      "table": "target_user_churn",
+      "rows": 3983823,
+      "columns": 5
+    },
+    {
+      "table": "target_user_item_purchase",
+      "rows": 4020170,
+      "columns": 5
+    }
+  ],
+  "rows": 16931173,
+  "cutoff_rows": 16664809,
+  "columns": 37,
+  "sqlite_columns": 38,
+  "parquet_bytes": 187716297,
+  "text_count": 12,
+  "sql_text_count": 18
+}

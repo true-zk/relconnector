@@ -9,7 +9,7 @@ GloVe LRU 对真实 GPU 训练的影响。训练语义和模型参数保持与�
 
 - 全量物化 batch baseline：`benchmarks/gpu-real-baseline.jsonl`
 - 历史 vanilla：`benchmarks/gpu-real-online.jsonl`
-- 当前 latest：`benchmarks/gpu-feature-optimized.jsonl`
+- 当前 v1：`benchmarks/gpu-feature-optimized.jsonl`
 - 数据库：未迁移的 `data/relbench/`，保持历史数据库大小和 mtime
 - 参数：1 epoch，batch 512，fanout 128x128，channels 128，cuda:0
 - runtime：async，单 Torch CPU 线程，单任务 timeout 14400 秒
@@ -63,10 +63,10 @@ GloVe LRU 对真实 GPU 训练的影响。训练语义和模型参数保持与�
 
 ### 十库汇总
 
-latest 对十个数据库均已实际运行。九项完成完整 epoch，Ratebeer 在固定 4 小时
+v1 对十个数据库均已实际运行。九项完成完整 epoch，Ratebeer 在固定 4 小时
 预算内完成 15686/20743 batch（75.6%）后 timeout。
 
-| 数据集 | Batch wall | Vanilla wall | Latest wall | Batch RSS | Vanilla RSS | Latest RSS | Latest 状态 |
+| 数据集 | Batch wall | Vanilla wall | v1 wall | Batch RSS | Vanilla RSS | v1 RSS | v1 状态 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | Amazon | 2541.4s | >14400s | 13898.2s | 103.82GiB | 4.23GiB | 7.23GiB | 4954/4954 |
 | Arxiv | 271.2s | >14400s | 2855.0s | 7.33GiB | 4.29GiB | 8.15GiB | 1044/1044 |
@@ -84,12 +84,12 @@ latest 对十个数据库均已实际运行。九项完成完整 epoch，Ratebee
 
 ### 32GiB 目标环境
 
-- Amazon batch baseline 峰值为 103.82GiB，latest 完整训练峰值为 7.23GiB。
-  latest 减少 96.59GiB（93.0%），内存需求缩小 14.35x；全量物化方案无法在
-  32GiB 主机运行，而 latest 可以。
+- Amazon batch baseline 峰值为 103.82GiB，v1 完整训练峰值为 7.23GiB。
+  v1 减少 96.59GiB（93.0%），内存需求缩小 14.35x；全量物化方案无法在
+  32GiB 主机运行，而 v1 可以。
 - Event batch baseline 峰值为 31.93GiB，尚未计入操作系统和其他进程开销，
-  在 32GB 主机上没有可用余量；latest 为 4.24GiB，减少 27.69GiB（86.7%）。
-- 十项 latest 的观测峰值均低于 10GiB。Ratebeer 虽然因计算吞吐 timeout，
+  在 32GB 主机上没有可用余量；v1 为 4.24GiB，减少 27.69GiB（86.7%）。
+- 十项 v1 的观测峰值均低于 10GiB。Ratebeer 虽然因计算吞吐 timeout，
   但 4 小时内峰值仅 8.74GiB，没有 OOM 或无界缓存增长。
 
 ### 历史 timeout 回归
@@ -107,7 +107,7 @@ latest 对十个数据库均已实际运行。九项完成完整 epoch，Ratebee
 
 已完成 3170/3170 batch：
 
-| 指标 | Batch baseline | Vanilla online | Latest online |
+| 指标 | Batch baseline | Vanilla online | v1 online |
 | --- | ---: | ---: | ---: |
 | Process wall time | 1102.0s | 14132.8s | 2832.6s |
 | Train phase | 948.6s | 14088.2s | 2788.2s |
@@ -118,18 +118,18 @@ latest 对十个数据库均已实际运行。九项完成完整 epoch，Ratebee
 | CUDA reserved peak | 22.81GiB | 22.81GiB | 22.81GiB |
 | Loss | 0.0378852 | 0.0389236 | 0.0377724 |
 
-Latest 相对 vanilla 的端到端加速为 4.99x；相对 batch baseline 仍慢 2.57x，
+v1 相对 vanilla 的端到端加速为 4.99x；相对 batch baseline 仍慢 2.57x，
 但 RSS 少 8.44GiB（47.6%）。batch baseline 的 feature fetch 是驻留内存的
 TensorFrame 切片，不是 SQL 读取；异步 operation 时间也会重叠，不能相加为 wall time。
 
-Latest 的 duplicate factor 为 2.114，raw cache 行覆盖率 98.70%，SQL
+v1 的 duplicate factor 为 2.114，raw cache 行覆盖率 98.70%，SQL
 amplification 1.032；794 个 feature window 平均包含 3.992 个 batch。
 
 ### rel-stack/user-badge
 
 已完成 6614/6614 batch：
 
-| 指标 | Batch baseline | Vanilla online | Latest online |
+| 指标 | Batch baseline | Vanilla online | v1 online |
 | --- | ---: | ---: | ---: |
 | Process wall time | 857.2s | 7831.8s | 6428.7s |
 | Train phase | 415.9s | 7772.3s | 6368.8s |
@@ -140,10 +140,10 @@ amplification 1.032；794 个 feature window 平均包含 3.992 个 batch。
 | CUDA reserved peak | 1.10GiB | 1.10GiB | 1.10GiB |
 | Loss | 0.14145304 | 0.14145565 | 0.14144955 |
 
-Latest 相对 vanilla 的端到端加速为 1.22x；相对 batch baseline 仍慢 7.50x，
+v1 相对 vanilla 的端到端加速为 1.22x；相对 batch baseline 仍慢 7.50x，
 但 RSS 少 11.34GiB（58.1%）。
 
-Latest 的 node duplicate factor 只有 1.011，raw cache 行覆盖率 4.86%，SQL
+v1 的 node duplicate factor 只有 1.011，raw cache 行覆盖率 4.86%，SQL
 amplification 1.002；1655 个 feature window 平均包含 3.996 个 batch。节点级
 去重收益很小，但文本层仍将 147.36M occurrences 降为 44.35M model inputs。
 
@@ -157,20 +157,20 @@ amplification 1.002；1655 个 feature window 平均包含 3.996 个 batch。节
    model inputs 仅 146617；SQL 查询放大接近 1。
 4. **Stack 的节点复用很低。** 主要收益来自文本去重和缓存，而不是 raw block
    cache；512MiB 文本缓存发生 43.90M 次淘汰。
-5. **latest 的内存是有界的。** 十项峰值均低于 10GiB；缓存收益低的 Amazon
+5. **v1 的内存是有界的。** 十项峰值均低于 10GiB；缓存收益低的 Amazon
    和 Ratebeer 也没有随 batch 数量出现无界增长。
-6. **batch baseline 通常仍是速度上界，但不总是。** Event 和 Trial 的 latest
-   端到端时间分别比 batch baseline 少 20.7% 和 38.0%；其余完成项中，latest
+6. **batch baseline 通常仍是速度上界，但不总是。** Event 和 Trial 的 v1
+   端到端时间分别比 batch baseline 少 20.7% 和 38.0%；其余完成项中，v1
    为 batch 的 1.0x 到 10.5x。该时间代价换来了大幅降低的主机内存需求。
 7. **Ratebeer 的计算瓶颈仍未解决。** SQL amplification 已接近 1，但完整
    epoch 预计约 5.3 小时；继续增加 SQL/raw cache 不会解决主要问题。
-8. **数值等价性尚未完全验收。** 以 batch baseline 为参照，Stack latest loss
-   相差约 `2.47e-5` 相对值；Salt latest 相差约 0.30%，虽然明显小于 vanilla
+8. **数值等价性尚未完全验收。** 以 batch baseline 为参照，Stack v1 loss
+   相差约 `2.47e-5` 相对值；Salt v1 相差约 0.30%，虽然明显小于 vanilla
    的 2.74%，仍不满足严格逐值一致，需要独立定位。
 
 ## 后续决策
 
-- 保留当前优化作为 latest：九项完成、所有任务峰值低于 10GiB，且 Amazon
+- 保留当前优化作为 v1：九项完成、所有任务峰值低于 10GiB，且 Amazon
   证明了在目标 32GiB 环境中相对全量物化方案的可运行性。
 - 下一轮优先增加自适应策略：低重复表绕过 `torch.unique`，并根据历史重复率决定
   window 大小，避免 Stack、Amazon、Ratebeer 这类数据支付无效去重成本。

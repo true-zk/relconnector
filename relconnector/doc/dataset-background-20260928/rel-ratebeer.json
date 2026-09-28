@@ -1,0 +1,650 @@
+{
+  "dataset": "rel-ratebeer",
+  "path": "/home/zk/relconnector/relconnector/data/relbench/rel-ratebeer.sqlite",
+  "sqlite_bytes": 6661517312,
+  "metadata": {
+    "catalog_version": "1",
+    "dataset_name": "rel-ratebeer",
+    "source": "relbench",
+    "source_spec": "stanford-star/relbench-v2-extra/rel-ratebeer",
+    "relbench_version": "3.0.1",
+    "source_revision": "",
+    "created_at": "2026-09-24T15:39:42.983099+00:00",
+    "val_timestamp": "2018-09-01T00:00:00",
+    "test_timestamp": "2020-01-01T00:00:00"
+  },
+  "snapshot": "071cb21e698ad91537d43ca6282411a6d0e78256",
+  "source_repo": "stanford-star/relbench-v2-extra",
+  "cutoff": "2020-01-01T00:00:00",
+  "stype_dependencies": {
+    "relbench": "3.0.1",
+    "pytorch-frame": "0.3.0",
+    "pandas": "3.0.5",
+    "numpy": "2.5.3"
+  },
+  "tables": [
+    {
+      "table": "availability",
+      "rows": 117424,
+      "cutoff_rows": 117424,
+      "columns": 11,
+      "sqlite_columns": 11,
+      "text_columns": [
+        "postal_code"
+      ],
+      "sql_text_columns": [
+        "postal_code",
+        "created_at"
+      ],
+      "stypes": {
+        "avail_id": "numerical",
+        "beer_id": "numerical",
+        "place_id": "numerical",
+        "postal_code": "text_embedded",
+        "state_id": "numerical",
+        "country_id": "numerical",
+        "created_at": "timestamp",
+        "user_id": "numerical",
+        "is_in_bottle": "categorical",
+        "is_on_tap": "categorical",
+        "is_out": "categorical"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": null,
+      "time_bounds": null,
+      "parquet_bytes": 3338839,
+      "parquet_rows": 117424,
+      "parquet_columns": 11
+    },
+    {
+      "table": "beer_ratings",
+      "rows": 14344128,
+      "cutoff_rows": 11847969,
+      "columns": 14,
+      "sqlite_columns": 14,
+      "text_columns": [
+        "comments",
+        "language"
+      ],
+      "sql_text_columns": [
+        "comments",
+        "created_at",
+        "language"
+      ],
+      "stypes": {
+        "rating_id": "numerical",
+        "user_id": "numerical",
+        "beer_id": "numerical",
+        "aroma": "categorical",
+        "flavor": "numerical",
+        "mouthfeel": "categorical",
+        "appearance": "categorical",
+        "overall": "numerical",
+        "total_score": "numerical",
+        "comments": "text_embedded",
+        "created_at": "timestamp",
+        "description_score": "numerical",
+        "language": "text_embedded"
+      },
+      "untyped_columns": [
+        "availability_id"
+      ],
+      "untyped_nonnull": {
+        "availability_id": 107716
+      },
+      "time_column": "created_at",
+      "time_bounds": [
+        "2000-04-12T06:22:38",
+        "2025-02-03T05:59:42.507000"
+      ],
+      "parquet_bytes": 2295254753,
+      "parquet_rows": 14344128,
+      "parquet_columns": 14
+    },
+    {
+      "table": "beer_styles",
+      "rows": 157,
+      "cutoff_rows": 157,
+      "columns": 6,
+      "sqlite_columns": 6,
+      "text_columns": [
+        "name",
+        "description",
+        "srm_range"
+      ],
+      "sql_text_columns": [
+        "name",
+        "description",
+        "srm_range"
+      ],
+      "stypes": {
+        "style_id": "numerical",
+        "name": "text_embedded",
+        "description": "text_embedded",
+        "parent_style_id": "numerical",
+        "category": "categorical",
+        "srm_range": "text_embedded"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": null,
+      "time_bounds": null,
+      "parquet_bytes": 57456,
+      "parquet_rows": 157,
+      "parquet_columns": 6
+    },
+    {
+      "table": "beer_upcs",
+      "rows": 249348,
+      "cutoff_rows": 249348,
+      "columns": 3,
+      "sqlite_columns": 4,
+      "text_columns": [
+        "upc"
+      ],
+      "sql_text_columns": [
+        "upc"
+      ],
+      "stypes": {
+        "upc": "text_embedded",
+        "beer_id": "numerical",
+        "user_id": "numerical"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": null,
+      "time_bounds": null,
+      "parquet_bytes": 4225514,
+      "parquet_rows": 249348,
+      "parquet_columns": 3
+    },
+    {
+      "table": "beers",
+      "rows": 1191662,
+      "cutoff_rows": 751524,
+      "columns": 20,
+      "sqlite_columns": 20,
+      "text_columns": [
+        "name",
+        "name_plain",
+        "description",
+        "tags",
+        "admin_note"
+      ],
+      "sql_text_columns": [
+        "name",
+        "name_plain",
+        "description",
+        "created_at",
+        "tags",
+        "admin_note"
+      ],
+      "stypes": {
+        "beer_id": "numerical",
+        "name": "text_embedded",
+        "name_plain": "text_embedded",
+        "brewer_id": "numerical",
+        "style_id": "numerical",
+        "alcohol_pct": "numerical",
+        "ibu": "numerical",
+        "is_seasonal": "categorical",
+        "description": "text_embedded",
+        "created_at": "timestamp",
+        "created_by": "numerical",
+        "Unrateable": "numerical",
+        "is_one_off": "categorical",
+        "is_alias": "categorical",
+        "is_verified": "categorical",
+        "is_retired": "categorical",
+        "tags": "text_embedded",
+        "updated_by": "numerical",
+        "admin_note": "text_embedded",
+        "has_pic": "categorical"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "created_at",
+      "time_bounds": [
+        "2000-04-02T00:00:00",
+        "2025-02-03T02:17:32.577000"
+      ],
+      "parquet_bytes": 233256089,
+      "parquet_rows": 1191662,
+      "parquet_columns": 20
+    },
+    {
+      "table": "brewers",
+      "rows": 50013,
+      "cutoff_rows": 50013,
+      "columns": 30,
+      "sqlite_columns": 30,
+      "text_columns": [
+        "name",
+        "description",
+        "name_plain",
+        "address",
+        "city",
+        "zip_code",
+        "website",
+        "facebook",
+        "twitter",
+        "email",
+        "phone",
+        "created_at",
+        "created_by",
+        "out_of_business_date",
+        "hours",
+        "admin_note"
+      ],
+      "sql_text_columns": [
+        "name",
+        "description",
+        "name_plain",
+        "address",
+        "city",
+        "zip_code",
+        "website",
+        "facebook",
+        "twitter",
+        "email",
+        "phone",
+        "opened_at",
+        "created_at",
+        "created_by",
+        "out_of_business_date",
+        "hours",
+        "admin_note"
+      ],
+      "stypes": {
+        "brewer_id": "numerical",
+        "name": "text_embedded",
+        "description": "text_embedded",
+        "name_plain": "text_embedded",
+        "address": "text_embedded",
+        "city": "text_embedded",
+        "state_id": "numerical",
+        "country_id": "numerical",
+        "zip_code": "text_embedded",
+        "type_id": "categorical",
+        "website": "text_embedded",
+        "facebook": "text_embedded",
+        "twitter": "text_embedded",
+        "email": "text_embedded",
+        "phone": "text_embedded",
+        "barrels": "numerical",
+        "opened_at": "timestamp",
+        "created_at": "text_embedded",
+        "created_by": "text_embedded",
+        "beer_jobber_id": "numerical",
+        "has_logo": "categorical",
+        "is_out_of_business": "categorical",
+        "out_of_business_date": "text_embedded",
+        "is_retired": "categorical",
+        "area_code": "numerical",
+        "hours": "text_embedded",
+        "metro_id": "numerical",
+        "region_id": "numerical",
+        "admin_note": "text_embedded",
+        "updated_by": "numerical"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": null,
+      "time_bounds": null,
+      "parquet_bytes": 8541066,
+      "parquet_rows": 50013,
+      "parquet_columns": 30
+    },
+    {
+      "table": "countries",
+      "rows": 251,
+      "cutoff_rows": 251,
+      "columns": 5,
+      "sqlite_columns": 5,
+      "text_columns": [
+        "name",
+        "code"
+      ],
+      "sql_text_columns": [
+        "name",
+        "code",
+        "continent"
+      ],
+      "stypes": {
+        "country_id": "numerical",
+        "name": "text_embedded",
+        "code": "text_embedded",
+        "continent": "categorical",
+        "has_brewer": "categorical"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": null,
+      "time_bounds": null,
+      "parquet_bytes": 8691,
+      "parquet_rows": 251,
+      "parquet_columns": 5
+    },
+    {
+      "table": "favorites",
+      "rows": 212273,
+      "cutoff_rows": 121769,
+      "columns": 5,
+      "sqlite_columns": 5,
+      "text_columns": [],
+      "sql_text_columns": [
+        "created_at"
+      ],
+      "stypes": {
+        "favorite_id": "numerical",
+        "created_at": "timestamp",
+        "user_id": "numerical",
+        "beer_id": "numerical",
+        "list_id": "numerical"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "created_at",
+      "time_bounds": [
+        "2018-05-02T23:05:42.970000",
+        "2025-02-02T21:10:36.083000"
+      ],
+      "parquet_bytes": 4333572,
+      "parquet_rows": 212273,
+      "parquet_columns": 5
+    },
+    {
+      "table": "place_ratings",
+      "rows": 385707,
+      "cutoff_rows": 343179,
+      "columns": 12,
+      "sqlite_columns": 12,
+      "text_columns": [
+        "comments"
+      ],
+      "sql_text_columns": [
+        "comments",
+        "created_at"
+      ],
+      "stypes": {
+        "rating_id": "numerical",
+        "user_id": "numerical",
+        "place_id": "numerical",
+        "ambiance": "categorical",
+        "service": "categorical",
+        "selection": "categorical",
+        "food": "numerical",
+        "value": "numerical",
+        "overall": "numerical",
+        "total_score": "numerical",
+        "comments": "text_embedded",
+        "created_at": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "created_at",
+      "time_bounds": [
+        "2004-01-03T15:28:03",
+        "2025-02-01T20:28:00.260000"
+      ],
+      "parquet_bytes": 95669350,
+      "parquet_rows": 385707,
+      "parquet_columns": 12
+    },
+    {
+      "table": "place_types",
+      "rows": 8,
+      "cutoff_rows": 8,
+      "columns": 2,
+      "sqlite_columns": 2,
+      "text_columns": [
+        "name"
+      ],
+      "sql_text_columns": [
+        "name"
+      ],
+      "stypes": {
+        "type_id": "numerical",
+        "name": "text_embedded"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": null,
+      "time_bounds": null,
+      "parquet_bytes": 1844,
+      "parquet_rows": 8,
+      "parquet_columns": 2
+    },
+    {
+      "table": "places",
+      "rows": 86061,
+      "cutoff_rows": 86061,
+      "columns": 59,
+      "sqlite_columns": 59,
+      "text_columns": [
+        "name",
+        "name_plain",
+        "description",
+        "address",
+        "city",
+        "city_plain",
+        "postal_code",
+        "phone",
+        "website",
+        "facebook",
+        "twitter",
+        "scene",
+        "staff",
+        "parking",
+        "music",
+        "events",
+        "noise",
+        "seating",
+        "food_details",
+        "hours",
+        "created_at",
+        "phone_area_code"
+      ],
+      "sql_text_columns": [
+        "name",
+        "name_plain",
+        "description",
+        "address",
+        "city",
+        "city_plain",
+        "postal_code",
+        "phone",
+        "website",
+        "facebook",
+        "twitter",
+        "scene",
+        "staff",
+        "parking",
+        "music",
+        "events",
+        "noise",
+        "seating",
+        "food_details",
+        "comments",
+        "hours",
+        "created_at",
+        "phone_area_code",
+        "currency"
+      ],
+      "stypes": {
+        "place_id": "numerical",
+        "name": "text_embedded",
+        "name_plain": "text_embedded",
+        "description": "text_embedded",
+        "type_id": "numerical",
+        "address": "text_embedded",
+        "city": "text_embedded",
+        "city_plain": "text_embedded",
+        "state_id": "numerical",
+        "country_id": "numerical",
+        "postal_code": "text_embedded",
+        "phone": "text_embedded",
+        "website": "text_embedded",
+        "facebook": "text_embedded",
+        "twitter": "text_embedded",
+        "has_taps": "categorical",
+        "has_bottles": "categorical",
+        "has_wifi": "categorical",
+        "has_togo": "categorical",
+        "has_singles": "categorical",
+        "has_seasonals": "categorical",
+        "has_real_ales": "categorical",
+        "has_rare_beers": "categorical",
+        "has_macros": "categorical",
+        "has_glassware": "categorical",
+        "has_smoking": "categorical",
+        "has_cigars": "categorical",
+        "allows_children": "categorical",
+        "takes_reservations": "categorical",
+        "has_patio": "categorical",
+        "has_tv": "categorical",
+        "has_games": "categorical",
+        "scene": "text_embedded",
+        "staff": "text_embedded",
+        "parking": "text_embedded",
+        "music": "text_embedded",
+        "events": "text_embedded",
+        "noise": "text_embedded",
+        "seating": "text_embedded",
+        "has_food": "categorical",
+        "food_details": "text_embedded",
+        "comments": "categorical",
+        "hours": "text_embedded",
+        "created_by": "numerical",
+        "updated_by": "numerical",
+        "created_at": "text_embedded",
+        "phone_area_code": "text_embedded",
+        "has_mail_order": "categorical",
+        "has_intl_shipping": "categorical",
+        "is_retired": "categorical",
+        "is_geo_override": "categorical",
+        "latitude": "numerical",
+        "longitude": "numerical",
+        "has_food_menu": "categorical",
+        "has_beer_menu": "categorical",
+        "has_pic": "categorical",
+        "has_flights": "categorical",
+        "creator_id": "categorical"
+      },
+      "untyped_columns": [
+        "currency"
+      ],
+      "untyped_nonnull": {
+        "currency": 2
+      },
+      "time_column": null,
+      "time_bounds": null,
+      "parquet_bytes": 14829247,
+      "parquet_rows": 86061,
+      "parquet_columns": 59
+    },
+    {
+      "table": "states",
+      "rows": 622,
+      "cutoff_rows": 622,
+      "columns": 4,
+      "sqlite_columns": 4,
+      "text_columns": [
+        "State"
+      ],
+      "sql_text_columns": [
+        "State"
+      ],
+      "stypes": {
+        "state_id": "numerical",
+        "State": "text_embedded",
+        "country_id": "categorical",
+        "hasbrewer": "numerical"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": null,
+      "time_bounds": null,
+      "parquet_bytes": 13525,
+      "parquet_rows": 622,
+      "parquet_columns": 4
+    },
+    {
+      "table": "users",
+      "rows": 236969,
+      "cutoff_rows": 218680,
+      "columns": 3,
+      "sqlite_columns": 3,
+      "text_columns": [],
+      "sql_text_columns": [
+        "created_at",
+        "user_type"
+      ],
+      "stypes": {
+        "user_id": "numerical",
+        "created_at": "timestamp",
+        "user_type": "categorical"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "created_at",
+      "time_bounds": [
+        "2000-04-12T06:22:38",
+        "2025-02-01T16:33:52.927000"
+      ],
+      "parquet_bytes": 3614950,
+      "parquet_rows": 236969,
+      "parquet_columns": 3
+    }
+  ],
+  "tasks": [
+    {
+      "table": "target_beer_churn",
+      "rows": 2642980,
+      "columns": 5
+    },
+    {
+      "table": "target_beer_ratings_total_score",
+      "rows": 14343239,
+      "columns": 5
+    },
+    {
+      "table": "target_brewer_dormant",
+      "rows": 130903,
+      "columns": 5
+    },
+    {
+      "table": "target_user_beer_favorite",
+      "rows": 2641,
+      "columns": 5
+    },
+    {
+      "table": "target_user_beer_liked",
+      "rows": 158786,
+      "columns": 5
+    },
+    {
+      "table": "target_user_churn",
+      "rows": 403009,
+      "columns": 5
+    },
+    {
+      "table": "target_user_count",
+      "rows": 403009,
+      "columns": 5
+    },
+    {
+      "table": "target_user_place_liked",
+      "rows": 39342,
+      "columns": 5
+    }
+  ],
+  "rows": 16874623,
+  "cutoff_rows": 13787005,
+  "columns": 174,
+  "sqlite_columns": 175,
+  "parquet_bytes": 2663144896,
+  "text_count": 55,
+  "sql_text_count": 66
+}

@@ -1,0 +1,77 @@
+{
+  "metric": "mean run pipeline duration / completed batches, not isolated batch latency",
+  "date": "2026-09-27",
+  "rows": [
+    {
+      "dataset": "Ratebeer",
+      "batches_per_run": 64,
+      "repeats_per_variant": 2,
+      "baseline_runs": [
+        "ratebeer-a4",
+        "ratebeer-a5"
+      ],
+      "optimized_runs": [
+        "ratebeer-c1",
+        "ratebeer-c2"
+      ],
+      "strategy": "Same total 2 GiB encoded cache: shared -> local; original feature-read code",
+      "pipeline_s": {
+        "baseline_mean_s": 70.69268307916354,
+        "optimized_mean_s": 62.73320604546461,
+        "baseline_ms_per_batch": 1104.5731731119304,
+        "optimized_ms_per_batch": 980.2063444603846,
+        "reduction_pct": 11.259265721723555
+      },
+      "wall_s": {
+        "baseline_mean_s": 82.3508408825146,
+        "optimized_mean_s": 66.9392225635238,
+        "baseline_ms_per_batch": 1286.7318887892907,
+        "optimized_ms_per_batch": 1045.9253525550594,
+        "reduction_pct": 18.71458524749943
+      },
+      "ready_wait_s": {
+        "baseline_mean_s": 58.01745079632383,
+        "optimized_mean_s": 50.25340408203192,
+        "baseline_ms_per_batch": 906.5226686925598,
+        "optimized_ms_per_batch": 785.2094387817488,
+        "reduction_pct": 13.38226103995569
+      }
+    },
+    {
+      "dataset": "Stack",
+      "batches_per_run": 200,
+      "repeats_per_variant": 2,
+      "baseline_runs": [
+        "stack-a2",
+        "stack-a3"
+      ],
+      "optimized_runs": [
+        "stack-b2",
+        "stack-b3"
+      ],
+      "strategy": "Identical logical embedding cache, compact physical shards",
+      "offline_compaction_s": 144.42723378003575,
+      "pipeline_s": {
+        "baseline_mean_s": 85.71957072650548,
+        "optimized_mean_s": 74.12718365748879,
+        "baseline_ms_per_batch": 428.5978536325274,
+        "optimized_ms_per_batch": 370.6359182874439,
+        "reduction_pct": 13.523617734861325
+      },
+      "wall_s": {
+        "baseline_mean_s": 95.81216784706339,
+        "optimized_mean_s": 84.27626939944457,
+        "baseline_ms_per_batch": 479.06083923531696,
+        "optimized_ms_per_batch": 421.38134699722286,
+        "reduction_pct": 12.040118397104393
+      },
+      "ready_wait_s": {
+        "baseline_mean_s": 58.20181144599337,
+        "optimized_mean_s": 46.78649147145916,
+        "baseline_ms_per_batch": 291.00905722996686,
+        "optimized_ms_per_batch": 233.9324573572958,
+        "reduction_pct": 19.61334139080313
+      }
+    }
+  ]
+}

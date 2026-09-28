@@ -1,0 +1,62 @@
+figure,dataset,metric,variant,value,unit,source
+1,Amazon,observed peak RSS,Batch,103.82,GiB,doc/gpu-feature-optimization-experiment.md
+1,Amazon,observed peak RSS,Vanilla,4.23,GiB,doc/gpu-feature-optimization-experiment.md
+1,Amazon,observed peak RSS,v1,7.23,GiB,doc/gpu-feature-optimization-experiment.md
+1,Arxiv,observed peak RSS,Batch,7.33,GiB,doc/gpu-feature-optimization-experiment.md
+1,Arxiv,observed peak RSS,Vanilla,4.29,GiB,doc/gpu-feature-optimization-experiment.md
+1,Arxiv,observed peak RSS,v1,8.15,GiB,doc/gpu-feature-optimization-experiment.md
+1,Avito,observed peak RSS,Batch,17.39,GiB,doc/gpu-feature-optimization-experiment.md
+1,Avito,observed peak RSS,Vanilla,4.26,GiB,doc/gpu-feature-optimization-experiment.md
+1,Avito,observed peak RSS,v1,4.51,GiB,doc/gpu-feature-optimization-experiment.md
+1,Event,observed peak RSS,Batch,31.93,GiB,doc/gpu-feature-optimization-experiment.md
+1,Event,observed peak RSS,Vanilla,3.91,GiB,doc/gpu-feature-optimization-experiment.md
+1,Event,observed peak RSS,v1,4.24,GiB,doc/gpu-feature-optimization-experiment.md
+1,F1,observed peak RSS,Batch,2.29,GiB,doc/gpu-feature-optimization-experiment.md
+1,F1,observed peak RSS,Vanilla,2.44,GiB,doc/gpu-feature-optimization-experiment.md
+1,F1,observed peak RSS,v1,2.57,GiB,doc/gpu-feature-optimization-experiment.md
+1,HM,observed peak RSS,Batch,14.35,GiB,doc/gpu-feature-optimization-experiment.md
+1,HM,observed peak RSS,Vanilla,3.89,GiB,doc/gpu-feature-optimization-experiment.md
+1,HM,observed peak RSS,v1,5.26,GiB,doc/gpu-feature-optimization-experiment.md
+1,Ratebeer,observed peak RSS,Batch,20.29,GiB,doc/gpu-feature-optimization-experiment.md
+1,Ratebeer,observed peak RSS,Vanilla,3.86,GiB,doc/gpu-feature-optimization-experiment.md
+1,Ratebeer,observed peak RSS,v1,8.74,GiB,doc/gpu-feature-optimization-experiment.md
+1,Salt,observed peak RSS,Batch,17.73,GiB,doc/gpu-feature-optimization-experiment.md
+1,Salt,observed peak RSS,Vanilla,5.15,GiB,doc/gpu-feature-optimization-experiment.md
+1,Salt,observed peak RSS,v1,9.29,GiB,doc/gpu-feature-optimization-experiment.md
+1,Stack,observed peak RSS,Batch,19.5,GiB,doc/gpu-feature-optimization-experiment.md
+1,Stack,observed peak RSS,Vanilla,3.67,GiB,doc/gpu-feature-optimization-experiment.md
+1,Stack,observed peak RSS,v1,8.16,GiB,doc/gpu-feature-optimization-experiment.md
+1,Trial,observed peak RSS,Batch,22.04,GiB,doc/gpu-feature-optimization-experiment.md
+1,Trial,observed peak RSS,Vanilla,2.92,GiB,doc/gpu-feature-optimization-experiment.md
+1,Trial,observed peak RSS,v1,4.5,GiB,doc/gpu-feature-optimization-experiment.md
+3a,Event,schema,Before,1895.62,s,doc/v2-initialization-optimization-20260927.md
+3a,Event,topology,Before,267.95,s,doc/v2-initialization-optimization-20260927.md
+3a,Event,other,Before,0.43,s,doc/v2-initialization-optimization-20260927.md
+3a,Event,schema,After,335.66,s,doc/v2-initialization-optimization-20260927.md
+3a,Event,topology,After,269.92,s,doc/v2-initialization-optimization-20260927.md
+3a,Event,other,After,0.42,s,doc/v2-initialization-optimization-20260927.md
+3b,Amazon,ready wait / train wall,historical diagnostic,97.3,percent,doc/bottleneck-analysis-and-optimization.md
+3b,Arxiv,ready wait / train wall,historical diagnostic,89,percent,doc/bottleneck-analysis-and-optimization.md
+3b,Stack,ready wait / train wall,historical diagnostic,86.5,percent,doc/bottleneck-analysis-and-optimization.md
+3b,HM,ready wait / train wall,historical diagnostic,65.6,percent,doc/bottleneck-analysis-and-optimization.md
+3b,Salt,ready wait / train wall,historical diagnostic,55.3,percent,doc/bottleneck-analysis-and-optimization.md
+3b,Trial,ready wait / train wall,historical diagnostic,60.4,percent,doc/bottleneck-analysis-and-optimization.md
+3b,Avito,ready wait / train wall,historical diagnostic,50.6,percent,doc/bottleneck-analysis-and-optimization.md
+4a,Salt,requested / unique,historical,2.114,ratio,doc/gpu-feature-optimization-experiment.md
+4a,Ratebeer,requested / unique,historical,1.105,ratio,doc/gpu-feature-optimization-experiment.md
+4b,Ratebeer,requested,historical diagnostic,122151,rows/batch,doc/bottleneck-analysis-and-optimization.md
+4b,Ratebeer,unique,historical diagnostic,110528,rows/batch,doc/bottleneck-analysis-and-optimization.md
+4b,Ratebeer,SQL read,historical diagnostic,88253,rows/batch,doc/bottleneck-analysis-and-optimization.md
+5,Salt,wall,Vanilla,14132.8,s,doc/gpu-feature-optimization-experiment.md
+5,Salt,wall,v1,2832.6,s,doc/gpu-feature-optimization-experiment.md
+5,Salt,fetch service,Vanilla,1169.6,s,doc/gpu-feature-optimization-experiment.md
+5,Salt,fetch service,v1,261.8,s,doc/gpu-feature-optimization-experiment.md
+5,Salt,assemble service,Vanilla,12917.6,s,doc/gpu-feature-optimization-experiment.md
+5,Salt,assemble service,v1,2525.2,s,doc/gpu-feature-optimization-experiment.md
+6,Salt,wall,Original v2,18260.23,s,doc/v2-salt-regression-20260926.md
+6,Salt,wall,Revised v2,5208.23,s,doc/v2-salt-regression-20260926.md
+6,Salt,shared lookup,Original v2,30532,worker-s,doc/v2-salt-regression-20260926.md
+6,Salt,shared lookup,Revised v2,802.46,worker-s,doc/v2-salt-regression-20260926.md
+6c,HM,wall,Shared full blocks,206,s,doc/v2-hm-regression-20260925.md
+6c,HM,wall,Shared requested rows,183.5,s,doc/v2-hm-regression-20260925.md
+6c,HM,wall,Local worker cache,157.7,s,doc/v2-hm-regression-20260925.md

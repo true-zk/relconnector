@@ -1,0 +1,694 @@
+{
+  "dataset": "rel-trial",
+  "path": "/home/zk/relconnector/relconnector/data/relbench/rel-trial.sqlite",
+  "sqlite_bytes": 1949143040,
+  "metadata": {
+    "catalog_version": "1",
+    "dataset_name": "rel-trial",
+    "source": "relbench",
+    "source_spec": "stanford-star/relbench-v1/rel-trial",
+    "relbench_version": "3.0.1",
+    "source_revision": "",
+    "created_at": "2026-09-24T15:23:23.276762+00:00",
+    "val_timestamp": "2020-01-01T00:00:00",
+    "test_timestamp": "2021-01-01T00:00:00"
+  },
+  "snapshot": "d8e976fd0a4b78877204bc8dfbcfc9a9f7f48600",
+  "source_repo": "stanford-star/relbench-v1",
+  "cutoff": "2021-01-01T00:00:00",
+  "stype_dependencies": {
+    "relbench": "3.0.1",
+    "pytorch-frame": "0.3.0",
+    "pandas": "3.0.5",
+    "numpy": "2.5.3"
+  },
+  "tables": [
+    {
+      "table": "conditions",
+      "rows": 3973,
+      "cutoff_rows": 3973,
+      "columns": 2,
+      "sqlite_columns": 2,
+      "text_columns": [
+        "mesh_term"
+      ],
+      "sql_text_columns": [
+        "mesh_term"
+      ],
+      "stypes": {
+        "condition_id": "numerical",
+        "mesh_term": "text_embedded"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": null,
+      "time_bounds": null,
+      "parquet_bytes": 84126,
+      "parquet_rows": 3973,
+      "parquet_columns": 2
+    },
+    {
+      "table": "conditions_studies",
+      "rows": 440543,
+      "cutoff_rows": 408422,
+      "columns": 4,
+      "sqlite_columns": 4,
+      "text_columns": [],
+      "sql_text_columns": [
+        "date"
+      ],
+      "stypes": {
+        "id": "numerical",
+        "nct_id": "numerical",
+        "condition_id": "numerical",
+        "date": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "date",
+      "time_bounds": [
+        "2000-01-01T00:00:00",
+        "2023-12-08T00:00:00"
+      ],
+      "parquet_bytes": 4446528,
+      "parquet_rows": 440543,
+      "parquet_columns": 4
+    },
+    {
+      "table": "designs",
+      "rows": 272521,
+      "cutoff_rows": 249093,
+      "columns": 15,
+      "sqlite_columns": 15,
+      "text_columns": [
+        "observational_model",
+        "primary_purpose",
+        "time_perspective",
+        "masking_description",
+        "intervention_model_description"
+      ],
+      "sql_text_columns": [
+        "allocation",
+        "intervention_model",
+        "observational_model",
+        "primary_purpose",
+        "time_perspective",
+        "masking",
+        "masking_description",
+        "intervention_model_description",
+        "subject_masked",
+        "caregiver_masked",
+        "investigator_masked",
+        "outcomes_assessor_masked",
+        "date"
+      ],
+      "stypes": {
+        "id": "numerical",
+        "nct_id": "numerical",
+        "allocation": "categorical",
+        "intervention_model": "categorical",
+        "observational_model": "text_embedded",
+        "primary_purpose": "text_embedded",
+        "time_perspective": "text_embedded",
+        "masking": "categorical",
+        "masking_description": "text_embedded",
+        "intervention_model_description": "text_embedded",
+        "subject_masked": "categorical",
+        "caregiver_masked": "categorical",
+        "investigator_masked": "categorical",
+        "outcomes_assessor_masked": "categorical",
+        "date": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "date",
+      "time_bounds": [
+        "2000-01-01T00:00:00",
+        "2023-12-11T00:00:00"
+      ],
+      "parquet_bytes": 8075650,
+      "parquet_rows": 272521,
+      "parquet_columns": 15
+    },
+    {
+      "table": "drop_withdrawals",
+      "rows": 440547,
+      "cutoff_rows": 381199,
+      "columns": 6,
+      "sqlite_columns": 6,
+      "text_columns": [
+        "period",
+        "reason"
+      ],
+      "sql_text_columns": [
+        "period",
+        "reason",
+        "date"
+      ],
+      "stypes": {
+        "id": "numerical",
+        "nct_id": "numerical",
+        "period": "text_embedded",
+        "reason": "text_embedded",
+        "count": "numerical",
+        "date": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "date",
+      "time_bounds": [
+        "2000-05-31T00:00:00",
+        "2023-12-06T00:00:00"
+      ],
+      "parquet_bytes": 4580061,
+      "parquet_rows": 440547,
+      "parquet_columns": 6
+    },
+    {
+      "table": "eligibilities",
+      "rows": 273160,
+      "cutoff_rows": 249730,
+      "columns": 15,
+      "sqlite_columns": 15,
+      "text_columns": [
+        "minimum_age",
+        "maximum_age",
+        "population",
+        "criteria",
+        "gender_description"
+      ],
+      "sql_text_columns": [
+        "sampling_method",
+        "gender",
+        "minimum_age",
+        "maximum_age",
+        "healthy_volunteers",
+        "population",
+        "criteria",
+        "gender_description",
+        "gender_based",
+        "adult",
+        "child",
+        "older_adult",
+        "date"
+      ],
+      "stypes": {
+        "id": "numerical",
+        "nct_id": "numerical",
+        "sampling_method": "categorical",
+        "gender": "categorical",
+        "minimum_age": "text_embedded",
+        "maximum_age": "text_embedded",
+        "healthy_volunteers": "categorical",
+        "population": "text_embedded",
+        "criteria": "text_embedded",
+        "gender_description": "text_embedded",
+        "gender_based": "categorical",
+        "adult": "categorical",
+        "child": "categorical",
+        "older_adult": "categorical",
+        "date": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "date",
+      "time_bounds": [
+        "2000-01-01T00:00:00",
+        "2023-12-11T00:00:00"
+      ],
+      "parquet_bytes": 195919050,
+      "parquet_rows": 273160,
+      "parquet_columns": 15
+    },
+    {
+      "table": "facilities",
+      "rows": 453233,
+      "cutoff_rows": 453233,
+      "columns": 6,
+      "sqlite_columns": 6,
+      "text_columns": [
+        "name",
+        "city",
+        "state",
+        "zip",
+        "country"
+      ],
+      "sql_text_columns": [
+        "name",
+        "city",
+        "state",
+        "zip",
+        "country"
+      ],
+      "stypes": {
+        "facility_id": "numerical",
+        "name": "text_embedded",
+        "city": "text_embedded",
+        "state": "text_embedded",
+        "zip": "text_embedded",
+        "country": "text_embedded"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": null,
+      "time_bounds": null,
+      "parquet_bytes": 15147193,
+      "parquet_rows": 453233,
+      "parquet_columns": 6
+    },
+    {
+      "table": "facilities_studies",
+      "rows": 1867226,
+      "cutoff_rows": 1798765,
+      "columns": 4,
+      "sqlite_columns": 4,
+      "text_columns": [],
+      "sql_text_columns": [
+        "date"
+      ],
+      "stypes": {
+        "id": "numerical",
+        "nct_id": "numerical",
+        "facility_id": "numerical",
+        "date": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "date",
+      "time_bounds": [
+        "2000-01-01T00:00:00",
+        "2023-12-11T00:00:00"
+      ],
+      "parquet_bytes": 17131756,
+      "parquet_rows": 1867226,
+      "parquet_columns": 4
+    },
+    {
+      "table": "interventions",
+      "rows": 3462,
+      "cutoff_rows": 3462,
+      "columns": 2,
+      "sqlite_columns": 2,
+      "text_columns": [
+        "mesh_term"
+      ],
+      "sql_text_columns": [
+        "mesh_term"
+      ],
+      "stypes": {
+        "intervention_id": "numerical",
+        "mesh_term": "text_embedded"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": null,
+      "time_bounds": null,
+      "parquet_bytes": 69954,
+      "parquet_rows": 3462,
+      "parquet_columns": 2
+    },
+    {
+      "table": "interventions_studies",
+      "rows": 179738,
+      "cutoff_rows": 171771,
+      "columns": 4,
+      "sqlite_columns": 4,
+      "text_columns": [],
+      "sql_text_columns": [
+        "date"
+      ],
+      "stypes": {
+        "id": "numerical",
+        "nct_id": "numerical",
+        "intervention_id": "numerical",
+        "date": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "date",
+      "time_bounds": [
+        "2000-01-01T00:00:00",
+        "2023-12-08T00:00:00"
+      ],
+      "parquet_bytes": 2124734,
+      "parquet_rows": 179738,
+      "parquet_columns": 4
+    },
+    {
+      "table": "outcome_analyses",
+      "rows": 254420,
+      "cutoff_rows": 225846,
+      "columns": 23,
+      "sqlite_columns": 23,
+      "text_columns": [
+        "non_inferiority_description",
+        "param_type",
+        "ci_upper_limit_na_comment",
+        "p_value_description",
+        "method",
+        "method_description",
+        "estimate_description",
+        "groups_description",
+        "other_analysis_description"
+      ],
+      "sql_text_columns": [
+        "non_inferiority_type",
+        "non_inferiority_description",
+        "param_type",
+        "dispersion_type",
+        "p_value_modifier",
+        "ci_n_sides",
+        "ci_upper_limit_na_comment",
+        "p_value_description",
+        "method",
+        "method_description",
+        "estimate_description",
+        "groups_description",
+        "other_analysis_description",
+        "date"
+      ],
+      "stypes": {
+        "id": "numerical",
+        "nct_id": "numerical",
+        "outcome_id": "numerical",
+        "non_inferiority_type": "categorical",
+        "non_inferiority_description": "text_embedded",
+        "param_type": "text_embedded",
+        "param_value": "numerical",
+        "dispersion_type": "categorical",
+        "dispersion_value": "numerical",
+        "p_value_modifier": "categorical",
+        "p_value": "numerical",
+        "ci_n_sides": "categorical",
+        "ci_percent": "numerical",
+        "ci_lower_limit": "numerical",
+        "ci_upper_limit": "numerical",
+        "ci_upper_limit_na_comment": "text_embedded",
+        "p_value_description": "text_embedded",
+        "method": "text_embedded",
+        "method_description": "text_embedded",
+        "estimate_description": "text_embedded",
+        "groups_description": "text_embedded",
+        "other_analysis_description": "text_embedded",
+        "date": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "date",
+      "time_bounds": [
+        "2000-07-31T00:00:00",
+        "2023-12-06T00:00:00"
+      ],
+      "parquet_bytes": 12321386,
+      "parquet_rows": 254420,
+      "parquet_columns": 23
+    },
+    {
+      "table": "outcomes",
+      "rows": 476790,
+      "cutoff_rows": 411933,
+      "columns": 12,
+      "sqlite_columns": 12,
+      "text_columns": [
+        "outcome_type",
+        "title",
+        "description",
+        "time_frame",
+        "population",
+        "units",
+        "units_analyzed",
+        "dispersion_type",
+        "param_type"
+      ],
+      "sql_text_columns": [
+        "outcome_type",
+        "title",
+        "description",
+        "time_frame",
+        "population",
+        "units",
+        "units_analyzed",
+        "dispersion_type",
+        "param_type",
+        "date"
+      ],
+      "stypes": {
+        "id": "numerical",
+        "nct_id": "numerical",
+        "outcome_type": "text_embedded",
+        "title": "text_embedded",
+        "description": "text_embedded",
+        "time_frame": "text_embedded",
+        "population": "text_embedded",
+        "units": "text_embedded",
+        "units_analyzed": "text_embedded",
+        "dispersion_type": "text_embedded",
+        "param_type": "text_embedded",
+        "date": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "date",
+      "time_bounds": [
+        "2000-05-31T00:00:00",
+        "2023-12-08T00:00:00"
+      ],
+      "parquet_bytes": 90583448,
+      "parquet_rows": 476790,
+      "parquet_columns": 12
+    },
+    {
+      "table": "reported_event_totals",
+      "rows": 435129,
+      "cutoff_rows": 383064,
+      "columns": 7,
+      "sqlite_columns": 7,
+      "text_columns": [],
+      "sql_text_columns": [
+        "event_type",
+        "classification",
+        "date"
+      ],
+      "stypes": {
+        "id": "numerical",
+        "nct_id": "numerical",
+        "event_type": "categorical",
+        "classification": "categorical",
+        "subjects_affected": "numerical",
+        "subjects_at_risk": "numerical",
+        "date": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "date",
+      "time_bounds": [
+        "2000-05-31T00:00:00",
+        "2023-12-08T00:00:00"
+      ],
+      "parquet_bytes": 4134338,
+      "parquet_rows": 435129,
+      "parquet_columns": 7
+    },
+    {
+      "table": "sponsors",
+      "rows": 53241,
+      "cutoff_rows": 53241,
+      "columns": 3,
+      "sqlite_columns": 3,
+      "text_columns": [
+        "name",
+        "agency_class"
+      ],
+      "sql_text_columns": [
+        "name",
+        "agency_class"
+      ],
+      "stypes": {
+        "sponsor_id": "numerical",
+        "name": "text_embedded",
+        "agency_class": "text_embedded"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": null,
+      "time_bounds": null,
+      "parquet_bytes": 1541923,
+      "parquet_rows": 53241,
+      "parquet_columns": 3
+    },
+    {
+      "table": "sponsors_studies",
+      "rows": 425014,
+      "cutoff_rows": 391462,
+      "columns": 5,
+      "sqlite_columns": 5,
+      "text_columns": [],
+      "sql_text_columns": [
+        "lead_or_collaborator",
+        "date"
+      ],
+      "stypes": {
+        "id": "numerical",
+        "nct_id": "numerical",
+        "sponsor_id": "numerical",
+        "lead_or_collaborator": "categorical",
+        "date": "timestamp"
+      },
+      "untyped_columns": [],
+      "untyped_nonnull": {},
+      "time_column": "date",
+      "time_bounds": [
+        "2000-01-01T00:00:00",
+        "2023-12-11T00:00:00"
+      ],
+      "parquet_bytes": 4901191,
+      "parquet_rows": 425014,
+      "parquet_columns": 5
+    },
+    {
+      "table": "studies",
+      "rows": 273160,
+      "cutoff_rows": 249730,
+      "columns": 28,
+      "sqlite_columns": 28,
+      "text_columns": [
+        "target_duration",
+        "acronym",
+        "baseline_population",
+        "brief_title",
+        "official_title",
+        "source",
+        "biospec_retention",
+        "biospec_description",
+        "source_class",
+        "baseline_type_units_analyzed",
+        "detailed_descriptions",
+        "brief_summaries"
+      ],
+      "sql_text_columns": [
+        "start_date",
+        "target_duration",
+        "study_type",
+        "acronym",
+        "baseline_population",
+        "brief_title",
+        "official_title",
+        "phase",
+        "enrollment_type",
+        "source",
+        "has_dmc",
+        "is_fda_regulated_drug",
+        "is_fda_regulated_device",
+        "is_unapproved_device",
+        "is_ppsd",
+        "is_us_export",
+        "biospec_retention",
+        "biospec_description",
+        "source_class",
+        "baseline_type_units_analyzed",
+        "fdaaa801_violation",
+        "plan_to_share_ipd",
+        "detailed_descriptions",
+        "brief_summaries"
+      ],
+      "stypes": {
+        "nct_id": "numerical",
+        "start_date": "timestamp",
+        "target_duration": "text_embedded",
+        "study_type": "categorical",
+        "acronym": "text_embedded",
+        "baseline_population": "text_embedded",
+        "brief_title": "text_embedded",
+        "official_title": "text_embedded",
+        "phase": "categorical",
+        "enrollment": "numerical",
+        "enrollment_type": "categorical",
+        "source": "text_embedded",
+        "number_of_arms": "numerical",
+        "number_of_groups": "numerical",
+        "has_dmc": "categorical",
+        "is_fda_regulated_drug": "categorical",
+        "is_fda_regulated_device": "categorical",
+        "is_unapproved_device": "categorical",
+        "is_us_export": "categorical",
+        "biospec_retention": "text_embedded",
+        "biospec_description": "text_embedded",
+        "source_class": "text_embedded",
+        "baseline_type_units_analyzed": "text_embedded",
+        "plan_to_share_ipd": "categorical",
+        "detailed_descriptions": "text_embedded",
+        "brief_summaries": "text_embedded"
+      },
+      "untyped_columns": [
+        "is_ppsd",
+        "fdaaa801_violation"
+      ],
+      "untyped_nonnull": {
+        "is_ppsd": 4,
+        "fdaaa801_violation": 5
+      },
+      "time_column": "start_date",
+      "time_bounds": [
+        "2000-01-01T00:00:00",
+        "2023-12-11T00:00:00"
+      ],
+      "parquet_bytes": 312608243,
+      "parquet_rows": 273160,
+      "parquet_columns": 28
+    }
+  ],
+  "tasks": [
+    {
+      "table": "target_condition_sponsor_run",
+      "rows": 41072,
+      "columns": 5
+    },
+    {
+      "table": "target_eligibilities_adult",
+      "rows": 273160,
+      "columns": 5
+    },
+    {
+      "table": "target_eligibilities_child",
+      "rows": 273160,
+      "columns": 5
+    },
+    {
+      "table": "target_site_sponsor_run",
+      "rows": 733741,
+      "columns": 5
+    },
+    {
+      "table": "target_site_success",
+      "rows": 193764,
+      "columns": 5
+    },
+    {
+      "table": "target_studies_enrollment",
+      "rows": 271866,
+      "columns": 5
+    },
+    {
+      "table": "target_studies_has_dmc",
+      "rows": 234467,
+      "columns": 5
+    },
+    {
+      "table": "target_study_adverse",
+      "rows": 50029,
+      "columns": 5
+    },
+    {
+      "table": "target_study_outcome",
+      "rows": 13779,
+      "columns": 5
+    }
+  ],
+  "rows": 5852157,
+  "cutoff_rows": 5434924,
+  "columns": 136,
+  "sqlite_columns": 136,
+  "parquet_bytes": 673669581,
+  "text_count": 51,
+  "sql_text_count": 94
+}

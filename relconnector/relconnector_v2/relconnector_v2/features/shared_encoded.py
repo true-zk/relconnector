@@ -6,9 +6,10 @@ from multiprocessing.managers import BaseManager
 from typing import Any, cast
 
 import torch
-from torch_frame import TensorFrame
+from torch_frame import TensorFrame, cat
 
 from .cache import EncodedFeatureCache, EncodedFeatureEntry
+from .rows import gather_rows
 
 LookupResult = tuple[
     list[tuple[EncodedFeatureEntry, list[tuple[int, int]]]],
@@ -18,12 +19,33 @@ LookupResult = tuple[
 
 class _CacheOwner:
     def __init__(self, max_bytes: int, admission: str) -> None:
-        self.cache = EncodedFeatureCache(max_bytes, admission=admission)
+        self.cache = EncodedFeatureCache(
+            max_bytes, admission=admission, share_memory=True
+        )
 
     def lookup_many(
         self, table: str, node_ids: torch.Tensor, epoch: int | None
     ) -> LookupResult:
-        return self.cache.lookup_many(table, node_ids, epoch=epoch)
+        groups, misses = self.cache.lookup_many(table, node_ids, epoch=epoch)
+        if not groups:
+            return [], misses
+
+        # Sending entire cached chunks through the manager makes a sparse hit
+        # increasingly expensive as the cache grows. Return only requested rows.
+        pieces: list[TensorFrame] = []
+        positions: list[int] = []
+        for entry, locations in groups:
+            rows = torch.tensor([row for _, row in locations], dtype=torch.long)
+            pieces.append(gather_rows(entry.frame, rows))
+            positions.extend(position for position, _ in locations)
+        projected = pieces[0] if len(pieces) == 1 else cat(pieces, dim=0)
+        projected_ids = node_ids[torch.tensor(positions, dtype=torch.long)]
+        projected_entry = EncodedFeatureEntry(
+            -1, table, projected_ids, projected, 0
+        )
+        return [
+            (projected_entry, [(position, row) for row, position in enumerate(positions)])
+        ], misses
 
     def put(
         self,

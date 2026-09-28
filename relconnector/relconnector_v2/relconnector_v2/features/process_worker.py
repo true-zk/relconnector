@@ -35,10 +35,19 @@ class SqlAssemblyWorkerFactory:
     text_cache_admission: Literal["always", "second", "adaptive"]
     text_execution: Literal["official", "direct"]
     shared_text_cache_bytes: int
+    disk_text_cache_path: str | None
+    disk_text_cache_namespace: str
+    disk_text_cache_mode: Literal["off", "on", "adaptive"]
+    database_bytes: int
+    disk_text_cache_min_database_bytes: int
+    disk_text_cache_min_model_inputs: int
+    disk_text_cache_max_memory_hit_rate: float
+    disk_text_cache_min_model_time_s: float
     encoded_cache_bytes: int
     shared_encoded_cache_bytes: int
     encoded_cache_admission: Literal["always", "second", "adaptive"]
     operation_telemetry: bool
+    adaptive_text_index: bool = False
     shared_text_cache: SharedTextEmbeddingCache | None = None
     shared_encoded_cache: SharedEncodedFeatureCache | None = None
 
@@ -56,6 +65,7 @@ class SqlAssemblyWorkerFactory:
                 context,
                 max_bytes=self.shared_text_cache_bytes,
                 embedding_dim=GloveTextEmbedder.embedding_dim,
+                adaptive_local_index=self.adaptive_text_index,
             )
         )
         encoded_cache = None
@@ -101,6 +111,14 @@ class SqlAssemblyWorker:
             cache_admission=config.text_cache_admission,
             execution=config.text_execution,
             shared_cache=config.shared_text_cache,
+            disk_cache_path=config.disk_text_cache_path,
+            disk_cache_namespace=config.disk_text_cache_namespace,
+            disk_cache_mode=config.disk_text_cache_mode,
+            database_bytes=config.database_bytes,
+            disk_cache_min_database_bytes=(config.disk_text_cache_min_database_bytes),
+            disk_cache_min_model_inputs=config.disk_text_cache_min_model_inputs,
+            disk_cache_max_memory_hit_rate=(config.disk_text_cache_max_memory_hit_rate),
+            disk_cache_min_model_time_s=config.disk_text_cache_min_model_time_s,
             metrics=self.metrics,
         )
         encoder = TensorFrameEncoder(
@@ -117,7 +135,18 @@ class SqlAssemblyWorker:
         )
 
     def assemble_many(self, plans: list[SamplePlan]) -> list[PreparedBatch]:
-        return self.assembler.assemble_many(self.fetcher.fetch_many(plans))
+        prepared: list[PreparedBatch] = []
+        start = 0
+        while start < len(plans):
+            epoch = plans[start].key.epoch
+            stop = start + 1
+            while stop < len(plans) and plans[stop].key.epoch == epoch:
+                stop += 1
+            prepared.extend(
+                self.assembler.assemble_many(self.fetcher.fetch_many(plans[start:stop]))
+            )
+            start = stop
+        return prepared
 
     def diagnostics(self) -> dict[str, object]:
         raw = self.fetcher.cache
@@ -131,9 +160,12 @@ class SqlAssemblyWorker:
                 "hit_rate": encoded.hit_rate,
                 "inserted_rows": encoded.inserted_rows,
                 "evictions": encoded.evictions,
+                "admission_rejections": encoded.admission_rejections,
+                "entries": encoded.entry_count,
                 "current_bytes": encoded.current_bytes,
                 "peak_bytes": encoded.peak_bytes,
                 "epoch_stats": encoded.epoch_stats,
+                "table_stats": encoded.table_stats,
             }
         )
         return {
@@ -156,9 +188,10 @@ class SqlAssemblyWorker:
                     if self.config.shared_text_cache is None
                     else self.config.shared_text_cache.snapshot()
                 ),
+                "disk": self.text_embedder.disk_cache_stats,
             },
             "operations": self.metrics.report(),
         }
 
     def close(self) -> None:
-        return
+        self.text_embedder.close()

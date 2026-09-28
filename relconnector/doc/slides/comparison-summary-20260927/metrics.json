@@ -1,0 +1,18 @@
+{
+  "aggregation": "equal-weight arithmetic mean of per-dataset relative ratios",
+  "rss_dataset_count": 10,
+  "vanilla_time_datasets": [
+    "rel-event",
+    "rel-f1",
+    "rel-salt",
+    "rel-stack",
+    "rel-trial"
+  ],
+  "batch_time_dataset_count": 10,
+  "vanilla_rss_record_reduction_pct": 27.49722668679304,
+  "vanilla_time_reduction_pct": 64.4197293580275,
+  "batch_rss_record_over_v2_main_rss_ratio": 9.181886986380121,
+  "v2_over_batch_time_ratio": 1.75316131644893,
+  "v2_over_batch_time_increase_pct": 75.31613164489299,
+  "warning": "RSS records are not comparable total-process-tree memory: v2 only RUSAGE_SELF. Time is end-to-end seconds/batch, includes preparation and mixed cache states; Vanilla time excludes five timeout datasets."
+}
