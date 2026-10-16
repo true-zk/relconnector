@@ -89,8 +89,8 @@
 目录 `benchmarks/v2-cache-projection-20260927/` 包含 `baseline/`、`candidate/`、`change.patch`、逐次命令/源码 SHA256、JSONL、日志、summary.json、primary-summary.json 和 host-load.jsonl。`run_one.py` 现在明确读取对应冻结快照，不会因默认代码恢复而错误运行基线作为候选。使用新标签，避免覆盖既有结果：
 
 ```bash
-.venv/bin/python benchmarks/v2-cache-projection-20260927/run_one.py baseline salt-recheck-a1
-.venv/bin/python benchmarks/v2-cache-projection-20260927/run_one.py candidate salt-recheck-b1
+../.venv/bin/python benchmarks/v2-cache-projection-20260927/run_one.py baseline salt-recheck-a1
+../.venv/bin/python benchmarks/v2-cache-projection-20260927/run_one.py candidate salt-recheck-b1
 ```
 
 `summarize.py` 的主均值固定取原始四个标签，新增复验需显式设置新的标签组；不得把新旧主机状态的实验任意拼接。候选正确性测试可将 PYTHONPATH 指向 candidate，并用 unittest discover -s 对应 candidate 目录运行归档的 test_row_gather.py。

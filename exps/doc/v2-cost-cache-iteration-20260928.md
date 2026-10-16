@@ -82,7 +82,7 @@ OS 页缓存未清空，文件系统位置保持一致。所谓磁盘命中可�
 ## 运行入口
 
 ```bash
-PYTHONPATH=relconnector_v2 .venv/bin/python -m relconnector_v2.run_cache_iteration \
+PYTHONPATH=relconnector_v2 ../.venv/bin/python -m relconnector_v2.run_cache_iteration \
   --output-dir benchmarks/cache-iteration-100x5-v2 \
   --max-batches 100 --epochs 5 --natural-check --device cuda:0
 ```

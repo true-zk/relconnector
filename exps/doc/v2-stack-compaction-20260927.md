@@ -88,8 +88,8 @@ N_{open}\le pF_{new}.
 生产工具：`relconnector_v2/relconnector_v2/features/compact_disk_text.py`。在仓库根目录运行：
 
 ```bash
-PYTHONPATH=relconnector_v2 .venv/bin/python -m relconnector_v2.features.compact_disk_text SOURCE.sqlite --plan
-PYTHONPATH=relconnector_v2 .venv/bin/python -m relconnector_v2.features.compact_disk_text SOURCE.sqlite NEW_CACHE_ROOT/text_embeddings
+PYTHONPATH=relconnector_v2 ../.venv/bin/python -m relconnector_v2.features.compact_disk_text SOURCE.sqlite --plan
+PYTHONPATH=relconnector_v2 ../.venv/bin/python -m relconnector_v2.features.compact_disk_text SOURCE.sqlite NEW_CACHE_ROOT/text_embeddings
 ```
 
 目标目录必须不存在；工具写入完成前保留INCOMPLETE标记，不应使用该目录训练。错误不会覆盖源缓存。训练通过现有`--cache-dir NEW_CACHE_ROOT`选择新缓存；完整初始化产物需要在该根目录准备，短实验复用已验证产物不等于生产自动跳过初始化。

@@ -207,11 +207,11 @@ reduction_pct = 100 * (1 - strategy_time / off_time)
 
 ## 8. 标准运行命令
 
-从项目目录 `/home/zk/relconnector/relconnector` 执行：
+从项目目录 `/home/zk/relconnector/exps` 执行：
 
 ```bash
 PYTHONPATH=relconnector_v2 \
-  .venv/bin/python -m relconnector_v2.run_cache_iteration \
+  ../.venv/bin/python -m relconnector_v2.run_cache_iteration \
   --output-dir benchmarks/<experiment-name> \
   --profiles off roi_disk \
   --epochs 5 \
@@ -226,7 +226,7 @@ PYTHONPATH=relconnector_v2 \
 
 ```bash
 PYTHONPATH=relconnector_v2 \
-  .venv/bin/python -m relconnector_v2.run_cache_iteration \
+  ../.venv/bin/python -m relconnector_v2.run_cache_iteration \
   --output-dir benchmarks/<experiment-name> \
   --profiles roi_disk \
   --epochs 5 \

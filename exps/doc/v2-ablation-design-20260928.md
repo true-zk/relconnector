@@ -111,16 +111,16 @@ duration；后续正式逐 epoch 对比需要统一 epoch 边界计时。不能�
 
 ## 运行方式
 
-在 `/home/zk/relconnector/relconnector` 运行。输出目录必须不存在，避免旧结果混入。
+在 `/home/zk/relconnector/exps` 运行。输出目录必须不存在，避免旧结果混入。
 runner 保存 manifest（代码 revision、dirty 状态、完整命令、执行顺序）和每组日志、原始 JSON。
 遇到失败或超时立即停止矩阵；已成功结果保留。没有按 dataset/task 粗粒度 resume。
 
 ```bash
-PYTHONPATH=relconnector_v2 .venv/bin/python -m relconnector_v2.run_ablation \
+PYTHONPATH=relconnector_v2 ../.venv/bin/python -m relconnector_v2.run_ablation \
   --dataset rel-arxiv --task paper-citation \
   --output-dir benchmarks/ablation-arxiv-plan --dry-run
 
-PYTHONPATH=relconnector_v2 .venv/bin/python -m relconnector_v2.run_ablation \
+PYTHONPATH=relconnector_v2 ../.venv/bin/python -m relconnector_v2.run_ablation \
   --dataset rel-arxiv --task paper-citation \
   --output-dir benchmarks/ablation-arxiv-pilot \
   --epochs 3 --max-batches 200 --repeats 3
@@ -133,7 +133,7 @@ PYTHONPATH=relconnector_v2 .venv/bin/python -m relconnector_v2.run_ablation \
 完成后用下面命令生成 summary.csv/summary.json，核验关闭缓存的遥测、worker 报告和工作量：
 
 ```bash
-PYTHONPATH=relconnector_v2 .venv/bin/python -m relconnector_v2.summarize_ablation \
+PYTHONPATH=relconnector_v2 ../.venv/bin/python -m relconnector_v2.summarize_ablation \
   benchmarks/ablation-arxiv-pilot
 ```
 

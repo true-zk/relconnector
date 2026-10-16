@@ -483,12 +483,12 @@ ClinicalTrials.gov 临床试验数据，连接研究、结果、不良事件、�
 - `paper-reference.json`：从官方论文 Table 1 抄录的比较基准及出处。
 - `collect_stats.py`、`verify_official.py`、`render_report.py`：采集、在线核对和报告生成脚本。
 
-在项目目录 `/home/zk/relconnector/relconnector` 执行：
+在项目目录 `/home/zk/relconnector/exps` 执行：
 
 ```bash
-.venv/bin/python doc/dataset-background-20260928/collect_stats.py
-.venv/bin/python doc/dataset-background-20260928/verify_official.py
-.venv/bin/python doc/dataset-background-20260928/render_report.py
+../.venv/bin/python doc/dataset-background-20260928/collect_stats.py
+../.venv/bin/python doc/dataset-background-20260928/verify_official.py
+../.venv/bin/python doc/dataset-background-20260928/render_report.py
 ```
 
 生成器会检查官方版本、完整文件列表及大小，若官方更新导致与本地快照不符则中止，以免输出过期的“一致”结论。

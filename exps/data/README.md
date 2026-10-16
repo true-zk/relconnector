@@ -18,7 +18,7 @@ data/relbench/<dataset>.sqlite
 ## 环境
 
 ```bash
-cd /workspace/relconnector
+cd exps  # 从仓库根目录进入实验目录
 uv pip install --python ../.venv/bin/python -r data/requirements.txt
 ```
 

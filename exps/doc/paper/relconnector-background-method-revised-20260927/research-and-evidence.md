@@ -41,7 +41,7 @@
 
 ## 3 实现与方法章节映射
 
-相对于项目根目录 `/home/zk/relconnector/relconnector`：
+相对于项目根目录 `/home/zk/relconnector/exps`：
 
 | 机制 | 代码 |
 | --- | --- |

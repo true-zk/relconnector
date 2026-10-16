@@ -46,10 +46,10 @@
 ## 复现与文件
 
 ```bash
-.venv/bin/python benchmarks/batch-memory-estimate-20260927/estimate.py
-.venv/bin/python benchmarks/batch-memory-estimate-20260927/task_memory.py
-.venv/bin/python benchmarks/batch-memory-estimate-20260927/runtime_reference.py
-.venv/bin/python benchmarks/batch-memory-estimate-20260927/report.py
+../.venv/bin/python benchmarks/batch-memory-estimate-20260927/estimate.py
+../.venv/bin/python benchmarks/batch-memory-estimate-20260927/task_memory.py
+../.venv/bin/python benchmarks/batch-memory-estimate-20260927/runtime_reference.py
+../.venv/bin/python benchmarks/batch-memory-estimate-20260927/report.py
 ```
 
 - `estimates.json`：每表行数、抽样数、每列 stype/编码字节、图估算、输入文件 mtime/大小。

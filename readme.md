@@ -4,20 +4,21 @@
 
 ## 目录与依赖
 
-- [data/](data/README.md)：纯离线下载与 SQLite 落库，保存任务 split、schema、时间配置。
-- [relconnector/](relconnector/README.md)：在线 reader、图索引、采样、特征缓存、组装、训练和 executor。
-- [baseline/](baseline/README.md)：保留全量读库和 TensorFrame 物化的朴素实现。
-- [benchmark/](benchmark/README.md)：通用计时/内存工具、实验编排、子进程运行与结果比较。
-- [doc/](doc/README.md)：架构讨论、实施计划、验证记录和 GPU 实验报告。
+- [exps/data/](exps/data/README.md)：纯离线下载与 SQLite 落库，保存任务 split、schema、时间配置。
+- [exps/relconnector/](exps/relconnector/README.md)：在线 reader、图索引、采样、特征缓存、组装、训练和 executor。
+- [exps/relconnector_v2/](exps/relconnector_v2/README.md)：多进程训练实现与性能实验。
+- [exps/baseline/](exps/baseline/README.md)：保留全量读库和 TensorFrame 物化的朴素实现。
+- [exps/benchmark/](exps/benchmark/README.md)：通用计时/内存工具、实验编排、子进程运行与结果比较。
+- [exps/doc/](exps/doc/README.md)：架构讨论、实施计划、验证记录和 GPU 实验报告。
 
-训练实现不依赖 benchmark；benchmark 调用两套实现。benchmark/ 是代码，benchmarks/ 是实验产物，data/relbench/ 是数据库。安装包含运行包、版本化正确性契约及离线工具；不包含 SQLite 或实验产物。
+训练实现不依赖 benchmark；benchmark 调用两套实现。exps/benchmark/ 是代码，exps/benchmarks/ 是实验产物，exps/data/relbench/ 是数据库。安装包含运行包、版本化正确性契约及离线工具；不包含 SQLite 或实验产物。
 
 ## 环境
 
 当前使用 Python 3.12、torch 2.7.1+cu128、pyg-lib 0.5.0+pt27cu128、RelBench 3.0.1、pandas 3.0.5。
 
 ```bash
-uv pip install --python ../.venv/bin/python -e '.[connectorx,training,dev]'
+uv pip install --python .venv/bin/python -e '.[connectorx,training,dev]'
 # pyg-lib wheel 必须与 torch/CUDA 版本匹配。
 ```
 
@@ -51,15 +52,15 @@ result = model.train()
 
 ## 实验入口
 
-所有命令在项目根目录运行。先用 data/ 准备数据库，再运行 benchmark：
+所有命令在项目根目录运行。先用 exps/data/ 准备数据库，再运行 benchmark：
 
 ```bash
-../.venv/bin/python -m benchmark.runner --dataset rel-f1 --task driver-dnf \
-  --epochs 1 --max-batches 2 --device cpu --output benchmarks/baseline-smoke.jsonl
-../.venv/bin/python -m benchmark.online_runner --dataset rel-f1 --task driver-dnf \
-  --epochs 1 --max-batches 2 --device cpu --output benchmarks/online-smoke.jsonl
-../.venv/bin/python -m benchmark.compare \
-  benchmarks/baseline-smoke.jsonl benchmarks/online-smoke.jsonl
+.venv/bin/python -m benchmark.runner --dataset rel-f1 --task driver-dnf \
+  --epochs 1 --max-batches 2 --device cpu --output exps/benchmarks/baseline-smoke.jsonl
+.venv/bin/python -m benchmark.online_runner --dataset rel-f1 --task driver-dnf \
+  --epochs 1 --max-batches 2 --device cpu --output exps/benchmarks/online-smoke.jsonl
+.venv/bin/python -m benchmark.compare \
+  exps/benchmarks/baseline-smoke.jsonl exps/benchmarks/online-smoke.jsonl
 ```
 
 比较工具并排列出耗时和 RSS，同时检查 reader、executor、特征 schema fingerprint、TensorFrame/HeteroEncoder、采样策略、数据版本、训练工作量和 loss。baseline 与 online 现在共享这些训练语义；严格配置下实体与推荐任务的配对 smoke 得到了完全相同的 loss。历史 hash/Linear 编码结果不能与当前结果混用。
@@ -67,11 +68,11 @@ result = model.train()
 ## 验证
 
 ```bash
-../.venv/bin/ruff check .
-../.venv/bin/ruff format --check .
-../.venv/bin/pyright
-../.venv/bin/python -m unittest discover -s data/tests -v
-../.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/ruff check exps
+.venv/bin/ruff format --check exps
+.venv/bin/pyright
+.venv/bin/python -m unittest discover -s exps/data/tests -v
+.venv/bin/python -m unittest discover -s exps/tests -v
 ```
 
 已完成 F1 实体与推荐任务的两轮短程 CPU 训练。未重跑全 64 任务完整 epoch，未验证 CUDA 吞吐和显存；当前沙箱的进程退出可能报告 /proc/.../comm 权限限制，需与测试断言及 worker 结果分别判断。

@@ -13,7 +13,7 @@ sample process -> assembly process pool -> GPU trainer
 The package vendors the required connector, feature, graph, task, sampling, and
 training code. It does not import the original `relconnector` package.
 
-Use `PYTHONPATH=relconnector_v2` when running directly from the repository.
+Use `PYTHONPATH=exps/relconnector_v2` when running from the repository root.
 Runtime artifacts default to `.relconnector-v2-cache` and do not share the
 original implementation's cache namespace.
 
@@ -66,7 +66,7 @@ the ten-task validation runner selects it with a 4096 MiB total budget for HM.
 Example:
 
 ```bash
-PYTHONPATH=relconnector_v2 python -m relconnector_v2.benchmark \
+PYTHONPATH=exps/relconnector_v2 .venv/bin/python -m relconnector_v2.benchmark \
   --dataset rel-f1 \
   --task driver-circuit-compete \
   --epochs 2 \
@@ -82,13 +82,13 @@ the current implementation state.
 The optional offline tool screens for a fragmented immutable embedding layout:
 
 ```bash
-PYTHONPATH=relconnector_v2 .venv/bin/python -m relconnector_v2.features.compact_disk_text /path/to/cache.sqlite --plan
+PYTHONPATH=exps/relconnector_v2 .venv/bin/python -m relconnector_v2.features.compact_disk_text /path/to/cache.sqlite --plan
 ```
 
 To build an independent compact cache, pass a **new directory** as the destination:
 
 ```bash
-PYTHONPATH=relconnector_v2 .venv/bin/python -m relconnector_v2.features.compact_disk_text /path/to/cache.sqlite /path/to/new-cache/text_embeddings
+PYTHONPATH=exps/relconnector_v2 .venv/bin/python -m relconnector_v2.features.compact_disk_text /path/to/cache.sqlite /path/to/new-cache/text_embeddings
 ```
 
 The source index and vectors are unchanged. The tool copies indexed vectors into
