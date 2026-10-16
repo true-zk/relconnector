@@ -29,7 +29,7 @@ from relconnector_v2.connector.base import quote_identifier, sqlite_path
 from relconnector_v2.connector.decoding import decode_frame
 from relconnector_v2.observability import OperationMetrics
 
-from .text import TextEmbedder, normalize_text
+from .text import GloveTextEmbedder, TextEmbedder, normalize_text
 
 ColumnStats = dict[StatType, object]
 TableStats = dict[str, ColumnStats]
@@ -321,9 +321,10 @@ class SqlTensorFrameSchemaBuilder:
             ):
                 frame = decode_frame(raw, group)
                 for i, column in enumerate(group):
-                    values = pd.to_numeric(
-                        frame[column.name], errors="coerce"
-                    ).to_numpy(dtype="float64", na_value=np.nan)
+                    numeric_values = cast(
+                        pd.Series, pd.to_numeric(frame[column.name], errors="coerce")
+                    )
+                    values = numeric_values.to_numpy(dtype="float64", na_value=np.nan)
                     values = values[np.isfinite(values)]
                     end = counts[i] + len(values)
                     if end > rows:
@@ -562,7 +563,13 @@ class TensorFrameEncoder:
                     if kind == stype.multicategorical
                 },
                 col_to_text_embedder_cfg={
-                    column: text_config
+                    column: (
+                        TextEmbedderConfig(
+                            text_embedder.for_column(table, column), text_batch_size
+                        )
+                        if isinstance(text_embedder, GloveTextEmbedder)
+                        else text_config
+                    )
                     for column, kind in spec.col_to_stype.items()
                     if kind == stype.text_embedded and text_config is not None
                 },

@@ -60,6 +60,17 @@ class _FailingSeeds(_Seeds):
         raise RuntimeError("synthetic seed read failed")
 
 
+class _EpochGuardSeeds(_Seeds):
+    def __init__(self, batches: int, trainer: _Trainer) -> None:
+        super().__init__(batches)
+        self.trainer = trainer
+
+    def iter_epoch(self, epoch: int):
+        if len(self.trainer.order) != epoch * self.batches:
+            raise RuntimeError("next epoch started before prior training completed")
+        yield from super().iter_epoch(epoch)
+
+
 class _WrongEpochSampler(_Sampler):
     def sample(self, seeds: SeedBatch) -> EntitySamplePlan:
         plan = super().sample(seeds)
@@ -156,6 +167,30 @@ class _Trainer:
 
 
 class ProcessPipelineTest(unittest.TestCase):
+    def test_no_cross_epoch_prefetch_waits_for_training(self) -> None:
+        trainer = _Trainer()
+        result = ProcessPipelineExecutor(ProcessRuntimeConfig(
+            assembly_processes=2, window_batches=2, cross_epoch_prefetch=False,
+        )).run(ProcessRuntimeComponents(
+            seeds=_EpochGuardSeeds(3, trainer), sampler=_Sampler(),
+            assembly_factory=_AssemblyFactory(), trainer=trainer,
+        ), epochs=3)
+        self.assertEqual(result.steps, 9)
+        self.assertEqual([key.epoch for key in trainer.order], [0]*3 + [1]*3 + [2]*3)
+        for record in result.pipeline["epochs"]:
+            self.assertGreaterEqual(record["wall_duration_s"], record["duration_s"])
+            self.assertGreaterEqual(record["first_batch_wait_s"], 0)
+
+    def test_no_cross_epoch_prefetch_handles_empty_epochs(self) -> None:
+        trainer = _Trainer()
+        result = ProcessPipelineExecutor(ProcessRuntimeConfig(
+            assembly_processes=1, cross_epoch_prefetch=False,
+        )).run(ProcessRuntimeComponents(
+            seeds=_EpochGuardSeeds(0, trainer), sampler=_Sampler(),
+            assembly_factory=_AssemblyFactory(), trainer=trainer,
+        ), epochs=3)
+        self.assertEqual(result.steps, 0)
+
     def test_training_failure_identifies_actual_seed_batch(self) -> None:
         trainer = _Trainer()
         failure = ValueError("synthetic training failure")

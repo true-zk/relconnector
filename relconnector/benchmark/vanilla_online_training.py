@@ -85,5 +85,5 @@ class VanillaOnlineTrainingBenchmark:
                 config=asdict(self.model.config),
             ),
             telemetry=recorder.report(),
-            diagnostics={},
+            diagnostics={"initialization_cache": session.initialization_cache},
         )

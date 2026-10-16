@@ -10,6 +10,7 @@ import pandas as pd
 import torch
 from relbench.base import TaskType
 
+from .artifacts import CachedGraphIndexBuilder
 from .config import OnlineTrainingConfig
 from .connector import BaseDatabaseReader, create_reader
 from .connector.base import quote_identifier
@@ -22,6 +23,7 @@ from .features import (
 )
 from .features.text import GloveTextEmbedder
 from .graph import GraphIndex, InMemoryGraphIndexBuilder
+from .observability import OperationMetrics
 from .runtime import (
     AsyncPipelineExecutor,
     AsyncRuntimeConfig,
@@ -40,6 +42,8 @@ class OnlineTrainingSession:
     task: TaskSpec
     feature_schema: TensorFrameFeatureSchema
     components: RuntimeComponents
+    metrics: OperationMetrics
+    initialization_cache: dict[str, bool]
 
 
 class OnlineRelBenchModel:
@@ -66,24 +70,44 @@ class OnlineRelBenchModel:
         self.session: OnlineTrainingSession | None = None
 
     def prepare(self) -> OnlineTrainingSession:
+        if self.session is not None:
+            return self.session
         torch.set_num_threads(self.config.torch_num_threads)
         torch.manual_seed(self.config.seed)
         path = self.sqlite_dir / f"{self.dataset}.sqlite"
         reader = create_reader(self.reader_kind, path)
         reader.validate_catalog()
         task = TaskSpec.from_metadata(reader.task_metadata()[self.task_name])
-        feature_schema = SqlTensorFrameSchemaBuilder(
+        cutoff = _cutoff(reader)
+        cache_dir = (
+            Path(self.config.cache_dir)
+            if self.config.cache_dir is not None
+            else self.sqlite_dir / ".vanilla-initialization-cache"
+        )
+        effective_cache_dir = cache_dir if self.config.initialization_cache else None
+        schema_builder = SqlTensorFrameSchemaBuilder(
             reader,
             hidden_columns=task.hidden_columns,
             scan_batch_size=self.config.graph_scan_batch_size,
             text_embedding_dim=GloveTextEmbedder.embedding_dim,
-            cutoff=_cutoff(reader),
+            cutoff=cutoff,
             require_stypes=True,
-        ).build()
-        graph = InMemoryGraphIndexBuilder(
-            reader,
-            scan_batch_size=self.config.graph_scan_batch_size,
-        ).build(cutoff=_cutoff(reader))
+            cache_dir=effective_cache_dir,
+        )
+        feature_schema = schema_builder.build()
+        if effective_cache_dir is None:
+            graph_builder = InMemoryGraphIndexBuilder(
+                reader,
+                scan_batch_size=self.config.graph_scan_batch_size,
+            )
+        else:
+            graph_builder = CachedGraphIndexBuilder(
+                reader,
+                scan_batch_size=self.config.graph_scan_batch_size,
+                cache_dir=effective_cache_dir,
+            )
+        graph = graph_builder.build(cutoff=cutoff)
+        metrics = OperationMetrics(self.config.operation_telemetry)
         seeds = SqlSeedReader(
             reader,
             task,
@@ -104,11 +128,16 @@ class OnlineRelBenchModel:
             block_size=self.config.feature_block_size,
             cache_bytes=self.config.feature_cache_bytes,
             database_version=_database_version(path),
+            read_policy=self.config.feature_read_policy,
         )
         encoder = TensorFrameEncoder(
             feature_schema,
-            GloveTextEmbedder(model_path=self.config.text_model_path),
+            GloveTextEmbedder(
+                model_path=self.config.text_model_path,
+                metrics=metrics,
+            ),
             text_batch_size=self.config.text_batch_size,
+            metrics=metrics,
         )
         assembler = TensorFrameBatchAssembler(encoder)
         torch.manual_seed(self.config.seed)
@@ -141,6 +170,11 @@ class OnlineRelBenchModel:
                 assembler=assembler,
                 trainer=trainer,
             ),
+            metrics=metrics,
+            initialization_cache={
+                "schema": schema_builder.cache_hit,
+                "topology": bool(getattr(graph_builder, "cache_hit", False)),
+            },
         )
         return self.session
 

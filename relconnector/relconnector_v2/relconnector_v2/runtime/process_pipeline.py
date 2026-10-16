@@ -354,6 +354,7 @@ class ProcessPipelineExecutor:
             self.config.assembly_processes,
         )
         feeder_errors: list[BaseException] = []
+        epoch_releases = [threading.Event() for _ in range(epochs)]
         assembly_factory = components.assembly_factory
         parent_resources: list[object] = []
         bind_context = getattr(assembly_factory, "bind_process_context", None)
@@ -414,6 +415,10 @@ class ProcessPipelineExecutor:
                         batches += 1
                     if not seed_queue.put(_EpochEnd(epoch, batches), 0, stop):
                         return
+                    if not self.config.cross_epoch_prefetch:
+                        while not epoch_releases[epoch].wait(self.config.poll_interval_s):
+                            if stop.is_set():
+                                return
                 seed_queue.put(None, 0, stop)
             except BaseException as exc:  # noqa: BLE001
                 feeder_errors.append(exc)
@@ -451,6 +456,7 @@ class ProcessPipelineExecutor:
                 processes,
                 epochs,
                 started,
+                epoch_releases,
             )
             for name in ("shared_text_cache", "shared_encoded_cache"):
                 cache = getattr(assembly_factory, name, None)
@@ -494,6 +500,7 @@ class ProcessPipelineExecutor:
         processes: list[Any],
         epochs: int,
         started: float,
+        epoch_releases: list[threading.Event] | None = None,
     ) -> RuntimeResult:
         pending: dict[int, _ReadyBatch] = {}
         ready_by_epoch: dict[int, deque[int]] = defaultdict(deque)
@@ -585,6 +592,8 @@ class ProcessPipelineExecutor:
                 and current_epoch in epoch_expected
                 and epoch_trained[current_epoch] == epoch_expected[current_epoch]
             ):
+                if epoch_releases is not None:
+                    epoch_releases[current_epoch].set()
                 current_epoch += 1
             self._raise_process_error(error_queue, processes)
             if total_expected is not None and steps == total_expected:
@@ -671,6 +680,8 @@ class ProcessPipelineExecutor:
 
             expected = epoch_expected.get(current_epoch)
             if expected is not None and epoch_trained[current_epoch] == expected:
+                if epoch_releases is not None:
+                    epoch_releases[current_epoch].set()
                 current_epoch += 1
             with self._snapshot_lock:
                 self._snapshot = {
@@ -723,6 +734,8 @@ class ProcessPipelineExecutor:
             begin = epoch_started.get(epoch, started)
             finish = epoch_finished.get(epoch, begin)
             duration = max(finish - begin, 0.0)
+            wall_begin = started if epoch == 0 else epoch_finished.get(epoch - 1, started)
+            wall_duration = max(finish - wall_begin, 0.0)
             count = epoch_trained[epoch]
             records.append(
                 {
@@ -732,6 +745,8 @@ class ProcessPipelineExecutor:
                     "mean_loss": epoch_weighted_loss[epoch]
                     / max(epoch_examples[epoch], 1),
                     "duration_s": duration,
+                    "wall_duration_s": wall_duration,
+                    "first_batch_wait_s": max(begin - wall_begin, 0.0),
                     "ready_wait_s": epoch_ready_wait_s[epoch],
                     "batches_per_second": count / duration if duration else 0.0,
                 }

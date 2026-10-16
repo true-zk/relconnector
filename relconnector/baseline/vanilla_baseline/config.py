@@ -23,6 +23,7 @@ class OnlineTrainingConfig:
     seed_shuffle_block_size: int = 65_536
     feature_block_size: int = 4096
     feature_cache_bytes: int = 4 * 1024 * 1024 * 1024
+    feature_read_policy: Literal["hybrid", "row"] = "hybrid"
     executor: Literal["sync", "async"] = "async"
     seed_queue_bytes: int = 64 * 1024 * 1024
     plan_queue_bytes: int = 2 * 1024 * 1024 * 1024
@@ -30,6 +31,9 @@ class OnlineTrainingConfig:
     out_channels: int | None = None
     text_batch_size: int = 256
     text_model_path: str | None = None
+    operation_telemetry: bool = True
+    initialization_cache: bool = True
+    cache_dir: str | None = None
 
     def __post_init__(self) -> None:
         positive = (
@@ -53,6 +57,8 @@ class OnlineTrainingConfig:
             raise ValueError("max_batches must be positive")
         if self.feature_cache_bytes < 0:
             raise ValueError("feature_cache_bytes must be nonnegative")
+        if self.feature_read_policy not in {"hybrid", "row"}:
+            raise ValueError("feature_read_policy must be hybrid or row")
         if self.out_channels is not None and self.out_channels <= 0:
             raise ValueError("out_channels must be positive")
         if self.executor not in {"sync", "async"}:

@@ -60,8 +60,15 @@ class OnlineTrainingConfig:
     operation_telemetry: bool = True
     initialization_cache: bool = True
     cache_dir: str | None = None
+    cache_strategy: Literal["legacy", "off", "cost", "roi"] = "legacy"
+    cost_disk_cache_bytes: int = 2 * 1024**3
+    replay_dir: str | None = None
 
     def __post_init__(self) -> None:
+        if self.cache_strategy not in {"legacy", "off", "cost", "roi"}:
+            raise ValueError("invalid cache strategy")
+        if self.cost_disk_cache_bytes < 0:
+            raise ValueError("disk cache budget must be nonnegative")
         positive = (
             self.batch_size,
             self.channels,

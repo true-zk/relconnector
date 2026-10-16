@@ -23,6 +23,26 @@ class PandasDatabaseReader(BaseDatabaseReader):
                 dtype_backend="numpy_nullable",
             )
 
+    def read_row_queries(self, queries: list[str]) -> pd.DataFrame:
+        """Execute one-row SELECTs on one connection and combine their rows.
+
+        This intentionally does not combine predicates into an ``IN`` query.
+        It exists only for the naive row-query experiment, while avoiding a
+        fresh SQLite connection and Pandas frame for every individual row.
+        """
+        rows: list[tuple[object, ...]] = []
+        columns: list[str] = []
+        with sqlite3.connect(sqlite_path(self.url)) as connection:
+            cursor = connection.cursor()
+            for query in queries:
+                cursor.execute(query)
+                if not columns and cursor.description is not None:
+                    columns = [item[0] for item in cursor.description]
+                rows.extend(cursor.fetchall())
+        return pd.DataFrame.from_records(rows, columns=columns).convert_dtypes(
+            dtype_backend="numpy_nullable"
+        )
+
     def iter_query(
         self,
         query: str,

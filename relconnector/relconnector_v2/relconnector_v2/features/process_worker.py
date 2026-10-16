@@ -50,6 +50,10 @@ class SqlAssemblyWorkerFactory:
     adaptive_text_index: bool = False
     shared_text_cache: SharedTextEmbeddingCache | None = None
     shared_encoded_cache: SharedEncodedFeatureCache | None = None
+    cost_strategy: bool = False
+    cost_disk_policy: Literal["budget", "roi"] = "budget"
+    cost_disk_bytes: int = 0
+    training_epochs: int = 1
 
     def __call__(self, worker_index: int) -> SqlAssemblyWorker:
         return SqlAssemblyWorker(self, worker_index)
@@ -120,6 +124,10 @@ class SqlAssemblyWorker:
             disk_cache_max_memory_hit_rate=(config.disk_text_cache_max_memory_hit_rate),
             disk_cache_min_model_time_s=config.disk_text_cache_min_model_time_s,
             metrics=self.metrics,
+            cost_strategy=config.cost_strategy,
+            cost_disk_policy=config.cost_disk_policy,
+            cost_disk_bytes=config.cost_disk_bytes,
+            training_epochs=config.training_epochs,
         )
         encoder = TensorFrameEncoder(
             config.feature_schema,

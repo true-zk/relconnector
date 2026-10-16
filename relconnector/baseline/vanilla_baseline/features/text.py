@@ -9,6 +9,8 @@ import numpy as np
 import pandas as pd
 import torch
 
+from baseline.vanilla_baseline.observability import OperationMetrics
+
 
 class TextEmbedder(Protocol):
     @property
@@ -21,7 +23,12 @@ class GloveTextEmbedder:
     embedding_dim = 300
     model_name = "sentence-transformers/average_word_embeddings_glove.6B.300d"
 
-    def __init__(self, *, model_path: str | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        model_path: str | None = None,
+        metrics: OperationMetrics | None = None,
+    ) -> None:
         from sentence_transformers import SentenceTransformer
 
         # Feature workers stay on CPU; only prepared batches go to the trainer.
@@ -31,13 +38,18 @@ class GloveTextEmbedder:
             local_files_only=True,
         )
         self._model.eval()
+        self.metrics = metrics or OperationMetrics(False)
 
     def __call__(self, sentences: Sequence[object]) -> torch.Tensor:
         if not sentences:
             return torch.empty((0, self.embedding_dim))
-        with torch.inference_mode():
+        with self.metrics.timer("text_normalize"):
+            normalized = [normalize_text(value) for value in sentences]
+        self.metrics.add("text_rows", len(normalized))
+        self.metrics.add("text_characters", sum(map(len, normalized)))
+        with self.metrics.timer("text_model"), torch.inference_mode():
             return self._model.encode(
-                [normalize_text(value) for value in sentences],
+                normalized,
                 convert_to_tensor=True,
                 show_progress_bar=False,
             ).cpu()

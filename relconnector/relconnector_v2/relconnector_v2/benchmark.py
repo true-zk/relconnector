@@ -9,6 +9,7 @@ import time
 from dataclasses import asdict, replace
 from pathlib import Path
 
+from . import replay
 from .config import OnlineTrainingConfig
 from .process_api import MultiprocessRelBenchModel
 from .training.validation import ValidatedTrainer
@@ -63,6 +64,13 @@ def main(argv: list[str] | None = None) -> int:
         process_max_inflight_windows=args.max_inflight_windows,
         cache_dir=(None if args.cache_dir is None else str(args.cache_dir)),
         executor="process",
+        cache_strategy=args.cache_strategy,
+        cost_disk_cache_bytes=args.cost_disk_cache_mb * 1024**2,
+        replay_dir=(
+            None
+            if args.prepare_replay_only or args.replay_dir is None
+            else str(args.replay_dir)
+        ),
     )
     model = MultiprocessRelBenchModel(
         dataset=args.dataset,
@@ -72,6 +80,41 @@ def main(argv: list[str] | None = None) -> int:
         config=config,
     )
     started = time.perf_counter()
+    if args.prepare_only:
+        if args.prepare_replay_only:
+            parser.error("--prepare-only and --prepare-replay-only are exclusive")
+        session = model.prepare()
+        print(
+            json.dumps(
+                {
+                    "status": "prepared",
+                    "duration_s": time.perf_counter() - started,
+                    "initialization_cache": session.initialization_cache,
+                }
+            )
+        )
+        return 0
+    if args.prepare_replay_only:
+        if args.replay_dir is None:
+            parser.error("--prepare-replay-only requires --replay-dir")
+        session = model.prepare()
+        manifest = replay.materialize(
+            args.replay_dir,
+            session.components.seeds,
+            session.components.sampler,
+            model.replay_identity(),
+        )
+        print(
+            json.dumps(
+                {
+                    "status": "replay_prepared",
+                    "fingerprint": manifest["fingerprint"],
+                    "batches": len(manifest["batches"]),
+                    "duration_s": time.perf_counter() - started,
+                }
+            )
+        )
+        return 0
     validator = None
     if args.validate_categorical_inputs:
         session = model.prepare()
@@ -86,7 +129,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(
             "[v2 validation] checking categorical inputs; failed batches: "
-            f"{validator.diagnostic_dir.resolve()}", flush=True,
+            f"{validator.diagnostic_dir.resolve()}",
+            flush=True,
         )
     result = model.train()
     duration = time.perf_counter() - started
@@ -100,6 +144,10 @@ def main(argv: list[str] | None = None) -> int:
         "completed_examples": result.examples,
         "mean_loss": result.mean_loss,
         "config": asdict(config),
+        "effective_config": asdict(model.config),
+        "initialization_cache": (
+            None if model.session is None else model.session.initialization_cache
+        ),
         "pipeline": result.pipeline,
     }
     if validator is not None:
@@ -134,7 +182,17 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--output", type=Path)
     parser.add_argument("--resume", action="store_true")
     parser.add_argument(
-        "--validate-categorical-inputs", action="store_true",
+        "--cache-strategy",
+        choices=("legacy", "off", "cost", "roi"),
+        default="legacy",
+    )
+    parser.add_argument("--cost-disk-cache-mb", type=int, default=2048)
+    parser.add_argument("--replay-dir", type=Path)
+    parser.add_argument("--prepare-only", action="store_true")
+    parser.add_argument("--prepare-replay-only", action="store_true")
+    parser.add_argument(
+        "--validate-categorical-inputs",
+        action="store_true",
         help="Check CPU category indices and save inputs on training failure.",
     )
     parser.add_argument("--epochs", type=int, default=2)

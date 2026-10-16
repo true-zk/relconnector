@@ -255,6 +255,8 @@ def _vanilla_config(args: argparse.Namespace) -> VanillaTrainingConfig:
         text_batch_size=args.text_batch_size,
         text_model_path=args.text_model_path,
         out_channels=args.out_channels,
+        initialization_cache=not args.no_initialization_cache,
+        cache_dir=None if args.cache_dir is None else str(args.cache_dir),
     )
 
 

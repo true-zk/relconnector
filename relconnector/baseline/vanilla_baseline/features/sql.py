@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import cast
+from typing import Literal, cast
 
 import pandas as pd
 import torch
@@ -62,11 +62,14 @@ class SqlFeatureFetcher:
         database_version: str = "local",
         block_density_threshold: float = 0.25,
         max_ids_per_query: int = 10_000,
+        read_policy: Literal["hybrid", "row"] = "hybrid",
     ) -> None:
         if block_size <= 0 or max_ids_per_query <= 0:
             raise ValueError("batch sizes must be greater than zero")
         if not 0 < block_density_threshold <= 1:
             raise ValueError("block_density_threshold must be in (0, 1]")
+        if read_policy not in {"hybrid", "row"}:
+            raise ValueError("read_policy must be hybrid or row")
         self.reader = reader
         self.block_size = block_size
         self.database_version = database_version
@@ -74,6 +77,7 @@ class SqlFeatureFetcher:
         self._feature_columns = feature_columns
         self.block_density_threshold = block_density_threshold
         self.max_ids_per_query = max_ids_per_query
+        self.read_policy = read_policy
         self.cache = FeatureBlockCache(cache_bytes)
         self.last_stats = FeatureFetchStats(0, 0, 0, 0)
 
@@ -141,6 +145,17 @@ class SqlFeatureFetcher:
         sparse_ids: list[int] = []
         queried_rows = 0
         column_names = tuple(column.name for column in columns)
+        if self.read_policy == "row":
+            # Deliberately naive SQL baseline: issue one SELECT for every unique
+            # sampled row. Reuse the SQLite connection so this measures query
+            # granularity rather than thousands of connection handshakes.
+            row_ids = sorted(set(ids))
+            available = self._read_rows(schema, columns, row_ids)
+            queried_rows += len(available)
+            missing = sorted(set(ids).difference(available.index))
+            if missing:
+                raise KeyError(f"Missing node IDs in {table_name!r}: {missing[:10]}")
+            return available.reindex(ids).reset_index(drop=True), queried_rows
         for block, block_ids in ids_by_block.items():
             key = FeatureBlockKey(
                 self.database_version,
@@ -219,21 +234,59 @@ class SqlFeatureFetcher:
         node_id = _lookup_id_expression(schema)
         return self._read_where(schema, columns, f"{node_id} IN ({values})")
 
+    def _read_rows(
+        self,
+        schema: TableSchema,
+        columns: tuple[ColumnSchema, ...],
+        node_ids: list[int],
+    ) -> pd.DataFrame:
+        lookup_id = _lookup_id_expression(schema)
+        queries = [
+            self._select_query(
+                schema,
+                columns,
+                f"{lookup_id} = {_to_lookup_id(schema, node_id)}",
+            )
+            for node_id in node_ids
+        ]
+        read_many = getattr(self.reader, "read_row_queries", None)
+        if callable(read_many):
+            raw = read_many(queries)
+        else:
+            frames = [self.reader.read_query(query) for query in queries]
+            raw = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+        return self._decode_raw(raw, columns)
+
     def _read_where(
         self,
         schema: TableSchema,
         columns: tuple[ColumnSchema, ...],
         predicate: str,
     ) -> pd.DataFrame:
+        raw = self.reader.read_query(self._select_query(schema, columns, predicate))
+        return self._decode_raw(raw, columns)
+
+    def _select_query(
+        self,
+        schema: TableSchema,
+        columns: tuple[ColumnSchema, ...],
+        predicate: str,
+    ) -> str:
         node_id = _node_id_expression(schema)
         projection = ", ".join(
             [f"{node_id} AS {_NODE_ID_COLUMN}"]
             + [quote_identifier(column.name) for column in columns]
         )
-        raw = self.reader.read_query(
+        return (
             f"SELECT {projection} FROM {quote_identifier(schema.name)} "
             f"WHERE {predicate} ORDER BY {_lookup_id_expression(schema)}"
         )
+
+    def _decode_raw(
+        self,
+        raw: pd.DataFrame,
+        columns: tuple[ColumnSchema, ...],
+    ) -> pd.DataFrame:
         ids = cast(pd.Series, raw.pop(_NODE_ID_COLUMN)).astype("int64")
         decoded = decode_frame(raw, columns)
         decoded.index = ids.to_numpy()

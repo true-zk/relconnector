@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import cast
 
@@ -10,6 +10,7 @@ import pandas as pd
 import torch
 from relbench.base import TaskType
 
+from . import replay
 from .artifacts import CachedGraphIndexBuilder
 from .config import OnlineTrainingConfig
 from .connector import BaseDatabaseReader, create_reader
@@ -68,7 +69,40 @@ class MultiprocessRelBenchModel:
             else Path(__file__).resolve().parents[2] / "data" / "relbench"
         )
         self.config = config or OnlineTrainingConfig()
+        if self.config.cache_strategy in {"cost", "roi", "off"}:
+            self.config = replace(
+                self.config,
+                feature_cache_bytes=0,
+                encoded_feature_cache_bytes=0,
+                text_cache_scope="local",
+                text_embedding_cache_bytes=(
+                    self.config.text_embedding_cache_bytes
+                    if self.config.cache_strategy in {"cost", "roi"}
+                    else 0
+                ),
+                disk_text_cache_mode=(
+                    self.config.disk_text_cache_mode
+                    if self.config.cache_strategy in {"cost", "roi"}
+                    else "off"
+                ),
+            )
         self.session: MultiprocessTrainingSession | None = None
+        self.replay_info: dict[str, object] | None = None
+
+    def replay_identity(self) -> dict[str, object]:
+        return {
+            "dataset": self.dataset,
+            "task": self.task_name,
+            "database_version": _database_version(
+                self.sqlite_dir / f"{self.dataset}.sqlite"
+            ),
+            "batch_size": self.config.batch_size,
+            "seed": self.config.seed,
+            "max_batches": self.config.max_batches,
+            "num_neighbors": list(self.config.num_neighbors),
+            "torch_version": str(torch.__version__),
+            "sampling_contract": 1,
+        }
 
     def prepare(self) -> MultiprocessTrainingSession:
         torch.set_num_threads(self.config.torch_num_threads)
@@ -200,6 +234,12 @@ class MultiprocessRelBenchModel:
             encoded_cache_admission=self.config.encoded_cache_admission,
             operation_telemetry=self.config.operation_telemetry,
             adaptive_text_index=self.config.text_cache_scope == "adaptive",
+            cost_strategy=self.config.cache_strategy in {"cost", "roi"},
+            cost_disk_policy=(
+                "roi" if self.config.cache_strategy == "roi" else "budget"
+            ),
+            cost_disk_bytes=self.config.cost_disk_cache_bytes // workers,
+            training_epochs=self.config.epochs,
         )
         self.session = MultiprocessTrainingSession(
             graph=graph,
@@ -217,6 +257,21 @@ class MultiprocessRelBenchModel:
                 "topology": bool(getattr(graph_builder, "cache_hit", False)),
             },
         )
+        if self.config.replay_dir is not None:
+            directory = Path(self.config.replay_dir)
+            manifest = replay.validate(directory, self.replay_identity())
+            self.replay_info = {
+                "fingerprint": manifest["fingerprint"],
+                "batches_per_epoch": len(manifest["batches"]),
+            }
+            self.session = replace(
+                self.session,
+                components=replace(
+                    self.session.components,
+                    seeds=replay.ReplaySeeds(directory, manifest["batches"]),
+                    sampler=replay.ReplaySampler(directory),
+                ),
+            )
         return self.session
 
     def train(self) -> RuntimeResult:
@@ -239,7 +294,10 @@ class MultiprocessRelBenchModel:
                 progress_interval_s=self.config.process_progress_interval_s,
             )
         )
-        return executor.run(session.components, epochs=self.config.epochs)
+        result = executor.run(session.components, epochs=self.config.epochs)
+        if self.replay_info is not None:
+            result.pipeline["replay"] = self.replay_info
+        return result
 
 
 def _cutoff(reader: BaseDatabaseReader) -> pd.Timestamp | None:
