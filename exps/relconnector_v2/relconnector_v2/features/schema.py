@@ -531,11 +531,13 @@ class TensorFrameEncoder:
         *,
         text_batch_size: int,
         metrics: OperationMetrics | None = None,
+        preembedded_text: bool = False,
     ) -> None:
         if text_batch_size <= 0:
             raise ValueError("text_batch_size must be positive")
         self.schema = schema
         self.text_embedder = text_embedder
+        self.preembedded_text = preembedded_text
         self.metrics = metrics or OperationMetrics(False)
         has_text = any(
             kind == stype.text_embedded
@@ -564,7 +566,9 @@ class TensorFrameEncoder:
                 },
                 col_to_text_embedder_cfg={
                     column: (
-                        TextEmbedderConfig(
+                        TextEmbedderConfig(cast(Any, None), None)
+                        if preembedded_text
+                        else TextEmbedderConfig(
                             text_embedder.for_column(table, column), text_batch_size
                         )
                         if isinstance(text_embedder, GloveTextEmbedder)
@@ -588,13 +592,18 @@ class TensorFrameEncoder:
     def encode(self, table: str, frame: pd.DataFrame) -> TensorFrame:
         spec = self.schema.tables[table]
         with self.metrics.timer("frame_prepare", table=table):
-            prepared = _prepare_frame(frame, spec)
+            prepared = _prepare_frame(
+                frame, spec, self.metrics, table,
+                preembedded_text=self.preembedded_text,
+            )
         self.metrics.add("encode_rows", len(prepared), table=table)
         if len(prepared) > 0:
             with self.metrics.timer("frame_convert", table=table):
                 return self._converters[table](prepared)
         if table not in self._empty:
-            empty = self._converters[table](_sentinel_frame(spec))[:0]
+            empty = self._converters[table](
+                _sentinel_frame(spec, preembedded_text=self.preembedded_text)
+            )[:0]
             embedding = empty.feat_dict.get(stype.embedding)
             if (
                 isinstance(embedding, MultiEmbeddingTensor)
@@ -661,17 +670,27 @@ class _TimedConverter(DataFrameToTensorFrameConverter):
         return mapper
 
 
-def _prepare_frame(frame: pd.DataFrame, spec: TableFeatureSchema) -> pd.DataFrame:
+def _prepare_frame(
+    frame: pd.DataFrame,
+    spec: TableFeatureSchema,
+    metrics: OperationMetrics,
+    table: str,
+    *,
+    preembedded_text: bool = False,
+) -> pd.DataFrame:
     if not spec.columns:
         return pd.DataFrame({"__const__": np.ones(len(frame), dtype=np.float32)})
     output = frame.reindex(columns=[column.name for column in spec.columns]).copy()
     for column, kind in spec.col_to_stype.items():
-        if kind == stype.text_embedded:
-            output[column] = cast(pd.Series, output[column]).map(normalize_text)
+        if kind == stype.text_embedded and not preembedded_text:
+            with metrics.timer("prepare_text", table=table, column=column):
+                output[column] = cast(pd.Series, output[column]).map(normalize_text)
     return output
 
 
-def _sentinel_frame(spec: TableFeatureSchema) -> pd.DataFrame:
+def _sentinel_frame(
+    spec: TableFeatureSchema, *, preembedded_text: bool = False
+) -> pd.DataFrame:
     if not spec.columns:
         return pd.DataFrame({"__const__": [1.0]})
     values: dict[str, list[object]] = {}
@@ -689,7 +708,7 @@ def _sentinel_frame(spec: TableFeatureSchema) -> pd.DataFrame:
         elif kind == stype.timestamp:
             value = pd.Timestamp("1970-01-01")
         elif kind == stype.text_embedded:
-            value = ""
+            value = np.zeros(GloveTextEmbedder.embedding_dim, dtype=np.float32) if preembedded_text else ""
         else:
             raise NotImplementedError(kind.value)
         values[column] = [value]

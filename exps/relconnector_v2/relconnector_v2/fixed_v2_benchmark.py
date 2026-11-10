@@ -38,6 +38,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--batch-size", type=int, default=512)
     parser.add_argument("--num-neighbors", default="128,128")
     parser.add_argument("--channels", type=int, default=128)
+    parser.add_argument("--model", choices=("graphsage", "relgnn"), default="graphsage")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--torch-num-threads", type=int, default=1)
@@ -70,6 +71,7 @@ def main(argv: list[str] | None = None) -> int:
         batch_size=args.batch_size,
         num_neighbors=neighbors,
         channels=args.channels,
+        model_kind=args.model,
         epochs=args.epochs,
         max_batches=args.max_batches,
         seed=args.seed,
@@ -115,6 +117,7 @@ def main(argv: list[str] | None = None) -> int:
     payload = {
         "status": "ok",
         "implementation": "v2-fixed-replay-no-cache-single-process",
+        "model": args.model,
         "dataset": args.dataset,
         "task": args.task,
         "fingerprint": manifest["fingerprint"],

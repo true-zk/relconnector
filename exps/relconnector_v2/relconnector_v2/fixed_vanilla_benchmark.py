@@ -93,12 +93,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--batch-size", type=int, default=512)
     parser.add_argument("--num-neighbors", default="128,128")
     parser.add_argument("--channels", type=int, default=128)
+    parser.add_argument("--model", choices=("graphsage", "relgnn"), default="graphsage")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--torch-num-threads", type=int, default=1)
     parser.add_argument("--text-batch-size", type=int, default=256)
     parser.add_argument(
-        "--feature-read-policy", choices=("hybrid", "row"), default="hybrid"
+        "--feature-read-policy", choices=("hybrid", "row", "exact"), default="hybrid"
     )
     parser.add_argument("--prepare-only", action="store_true")
     args = parser.parse_args(argv)
@@ -123,6 +124,7 @@ def main(argv: list[str] | None = None) -> int:
         batch_size=args.batch_size,
         num_neighbors=neighbors,
         channels=args.channels,
+        model_kind=args.model,
         epochs=args.epochs,
         max_batches=args.max_batches,
         seed=args.seed,
@@ -186,6 +188,7 @@ def main(argv: list[str] | None = None) -> int:
     payload = {
         "status": "ok",
         "implementation": f"vanilla-fixed-replay-no-cache-{args.executor}",
+        "model": args.model,
         "executor": args.executor,
         "feature_read_policy": args.feature_read_policy,
         "dataset": args.dataset,

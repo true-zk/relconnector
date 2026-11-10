@@ -68,8 +68,9 @@ def materialize(
     records = []
     try:
         for seed in seeds.iter_epoch(0):
-            if shutil.disk_usage(directory).free < 2 * 1024**3:
-                raise OSError("Less than 2 GiB free while constructing fixed replay")
+            minimum_free = int(os.environ.get("RELCONNECTOR_REPLAY_MIN_FREE_BYTES", 2 * 1024**3))
+            if shutil.disk_usage(directory).free < minimum_free:
+                raise OSError(f"Less than {minimum_free} bytes free while constructing fixed replay")
             plan = sampler.sample(seed)
             name = f"batch-{seed.key.batch:06d}.pt"
             digest = _write_plan(directory / name, plan)

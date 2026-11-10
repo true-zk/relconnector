@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import torch
 from relbench.modeling.nn import HeteroEncoder, HeteroGraphSAGE, HeteroTemporalEncoder
+from relgnn_experiment.model import RelGNNBackbone
 from torch_frame import stype
 from torch_frame.data.stats import StatType
 from torch_geometric.data import HeteroData
@@ -24,6 +25,7 @@ class OnlineGraphSAGEBackbone(torch.nn.Module):
         channels: int,
         num_layers: int,
         aggr: str,
+        model_kind: str = "graphsage",
     ) -> None:
         super().__init__()
         self.encoder = HeteroEncoder(
@@ -32,13 +34,21 @@ class OnlineGraphSAGEBackbone(torch.nn.Module):
             node_to_col_stats=col_stats_dict,
         )
         self.temporal_encoder = HeteroTemporalEncoder(node_types, channels)
-        self.gnn = HeteroGraphSAGE(
-            node_types=node_types,
-            edge_types=edge_types,
-            channels=channels,
-            aggr=aggr,
-            num_layers=num_layers,
-        )
+        self.model_kind = model_kind
+        if model_kind == "relgnn":
+            self.gnn = RelGNNBackbone(
+                node_types, edge_types, channels, num_layers, aggr
+            )
+        elif model_kind == "graphsage":
+            self.gnn = HeteroGraphSAGE(
+                node_types=node_types,
+                edge_types=edge_types,
+                channels=channels,
+                aggr=aggr,
+                num_layers=num_layers,
+            )
+        else:
+            raise ValueError(f"unsupported model: {model_kind}")
 
     def reset_parameters(self) -> None:
         self.encoder.reset_parameters()
@@ -57,12 +67,15 @@ class OnlineGraphSAGEBackbone(torch.nn.Module):
             )
             for node_type, encoded_time in relative.items():
                 x_dict[node_type] = x_dict[node_type] + encoded_time
-        x_dict = self.gnn(
-            x_dict,
-            batch.edge_index_dict,
-            batch.num_sampled_nodes_dict,
-            batch.num_sampled_edges_dict,
-        )
+        if self.model_kind == "relgnn":
+            x_dict = self.gnn(x_dict, batch.edge_index_dict)
+        else:
+            x_dict = self.gnn(
+                x_dict,
+                batch.edge_index_dict,
+                batch.num_sampled_nodes_dict,
+                batch.num_sampled_edges_dict,
+            )
         return x_dict[seed_type][: int(seed_store.batch_size)]
 
 
@@ -78,6 +91,7 @@ class OnlineEntityModel(torch.nn.Module):
         channels: int,
         num_layers: int,
         aggr: str,
+        model_kind: str = "graphsage",
         norm: str = "batch_norm",
     ) -> None:
         super().__init__()
@@ -89,6 +103,7 @@ class OnlineEntityModel(torch.nn.Module):
             channels=channels,
             num_layers=num_layers,
             aggr=aggr,
+            model_kind=model_kind,
         )
         self.head = MLP(
             in_channels=channels,
@@ -117,6 +132,7 @@ class OnlineLinkModel(torch.nn.Module):
         channels: int,
         num_layers: int,
         aggr: str,
+        model_kind: str = "graphsage",
     ) -> None:
         super().__init__()
         self.backbone = OnlineGraphSAGEBackbone(
@@ -127,6 +143,7 @@ class OnlineLinkModel(torch.nn.Module):
             channels=channels,
             num_layers=num_layers,
             aggr=aggr,
+            model_kind=model_kind,
         )
         self.reset_parameters()
 

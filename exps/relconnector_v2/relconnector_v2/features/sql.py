@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import cast
+from typing import Literal, cast
 
 import pandas as pd
 import torch
@@ -29,6 +29,8 @@ from .contracts import (
     FetchedSubgraph,
     RecommendationFeatureBatch,
 )
+from .node_block_text import NodeBlockTextCache
+from .text import GloveTextEmbedder, normalize_text
 
 _NODE_ID_COLUMN = "__node_id__"
 
@@ -99,12 +101,18 @@ class SqlFeatureFetcher:
         database_version: str = "local",
         block_density_threshold: float = 0.25,
         max_ids_per_query: int = 10_000,
+        read_policy: Literal["hybrid", "sparse", "dense"] = "hybrid",
         metrics: OperationMetrics | None = None,
+        node_block_text_cache: NodeBlockTextCache | None = None,
+        text_columns: dict[str, tuple[str, ...]] | None = None,
+        text_embedder: GloveTextEmbedder | None = None,
     ) -> None:
         if block_size <= 0 or max_ids_per_query <= 0:
             raise ValueError("batch sizes must be greater than zero")
         if not 0 < block_density_threshold <= 1:
             raise ValueError("block_density_threshold must be in (0, 1]")
+        if read_policy not in {"hybrid", "sparse", "dense"}:
+            raise ValueError("read_policy must be hybrid, sparse, or dense")
         self.reader = reader
         self.block_size = block_size
         self.database_version = database_version
@@ -112,7 +120,13 @@ class SqlFeatureFetcher:
         self._feature_columns = feature_columns
         self.block_density_threshold = block_density_threshold
         self.max_ids_per_query = max_ids_per_query
+        self.read_policy = read_policy
         self.metrics = metrics or OperationMetrics(False)
+        self.node_block_text_cache = node_block_text_cache
+        self.text_columns = text_columns or {}
+        self.text_embedder = text_embedder
+        if node_block_text_cache is not None and text_embedder is None:
+            raise ValueError("node-block text cache requires a text embedder")
         self.cache = FeatureBlockCache(cache_bytes)
         self.last_stats = FeatureFetchStats()
         self.stats = FeatureFetchStats()
@@ -160,7 +174,12 @@ class SqlFeatureFetcher:
                 )
             self.metrics.add("requested_rows", len(combined), table=node_type)
             self.metrics.add("unique_rows", len(unique_ids), table=node_type)
-            frame, table_stats = self._fetch_unique_table(node_type, unique_ids)
+            frame, table_stats = (
+                self._fetch_with_node_block_text(node_type, unique_ids, epoch=epoch)
+                if self.node_block_text_cache is not None
+                and self.text_columns.get(node_type)
+                else self._fetch_unique_table(node_type, unique_ids)
+            )
             shared_frames[node_type] = frame
             unique_ids_by_table[node_type] = unique_ids
             unique_rows += len(unique_ids)
@@ -236,13 +255,74 @@ class SqlFeatureFetcher:
         frame, stats = self._fetch_unique_table(table_name, unique_ids)
         return frame.iloc[inverse.tolist()].reset_index(drop=True), stats.queried_rows
 
+    def _fetch_with_node_block_text(
+        self, table_name: str, node_ids: torch.Tensor, *, epoch: int
+    ) -> tuple[pd.DataFrame, _TableReadStats]:
+        cache = self.node_block_text_cache
+        embedder = self.text_embedder
+        assert cache is not None and embedder is not None
+        columns = self.text_columns[table_name]
+        ids = [int(value) for value in node_ids.tolist()]
+        positions = [(column, row) for column in columns for row in range(len(ids))]
+        keys = [cache.key(table_name, column, ids[row]) for column, row in positions]
+        with self.metrics.timer("block_text_cache_lookup", table=table_name):
+            found = cache.lookup(keys)
+        self.metrics.add("block_text_cache_hits", len(found), table=table_name)
+        self.metrics.add(
+            "block_text_cache_misses", len(keys) - len(found), table=table_name
+        )
+        all_columns = self.feature_columns(self.reader.schemas()[table_name])
+        selected_columns = (
+            tuple(column for column in all_columns if column.name not in columns)
+            if len(found) == len(keys)
+            else all_columns
+        )
+        frame, stats = self._fetch_unique_table(
+            table_name, node_ids, columns_override=selected_columns
+        )
+        new_keys: list[str] = []
+        new_vectors: list[torch.Tensor] = []
+        offset = 0
+        for column in columns:
+            missing_rows = [row for row in range(len(ids)) if offset + row not in found]
+            if missing_rows:
+                values = [normalize_text(frame[column].iloc[row]) for row in missing_rows]
+                with (
+                    self.metrics.timer(
+                        "block_text_encode", table=table_name, column=column
+                    ),
+                    embedder.epoch_context(epoch),
+                ):
+                    encoded = embedder.for_column(table_name, column)(values)
+                for row, vector in zip(missing_rows, encoded, strict=True):
+                    index = offset + row
+                    found[index] = vector
+                    new_keys.append(keys[index])
+                    new_vectors.append(vector)
+            frame[column] = pd.Series(
+                [found[offset + row].detach().cpu().numpy().copy() for row in range(len(ids))],
+                dtype="object",
+            )
+            offset += len(ids)
+        if new_keys:
+            with self.metrics.timer("block_text_cache_write", table=table_name):
+                cache.put_many(new_keys, torch.stack(new_vectors))
+            self.metrics.add("block_text_cache_new_rows", len(new_keys), table=table_name)
+        return frame, stats
+
     def _fetch_unique_table(
         self,
         table_name: str,
         node_ids: torch.Tensor,
+        *,
+        columns_override: tuple[ColumnSchema, ...] | None = None,
     ) -> tuple[pd.DataFrame, _TableReadStats]:
         schema = self.reader.schemas()[table_name]
-        columns = self.feature_columns(schema)
+        columns = (
+            self.feature_columns(schema)
+            if columns_override is None
+            else columns_override
+        )
         ids = [int(value) for value in node_ids.tolist()]
         if not columns:
             return pd.DataFrame({"__const__": [1.0] * len(ids)}), _TableReadStats(
@@ -280,7 +360,9 @@ class SqlFeatureFetcher:
                 cache_served_rows += len(block_ids)
                 continue
             density = len(block_ids) / self.block_size
-            if density < self.block_density_threshold:
+            if self.read_policy == "sparse" or (
+                self.read_policy == "hybrid" and density < self.block_density_threshold
+            ):
                 sparse_ids.extend(block_ids)
                 continue
             frame = self._read_block(schema, columns, block)
@@ -377,6 +459,16 @@ class SqlFeatureFetcher:
                 f"SELECT {projection} FROM {quote_identifier(schema.name)} "
                 f"WHERE {predicate} ORDER BY {_lookup_id_expression(schema)}"
             )
+        for name in self.text_columns.get(schema.name, ()):
+            if name in raw:
+                values = raw[name]
+                self.metrics.add("sql_text_cells", len(values), table=schema.name, column=name)
+                self.metrics.add(
+                    "sql_text_utf8_bytes",
+                    sum(len(value.encode("utf-8")) for value in values if isinstance(value, str)),
+                    table=schema.name,
+                    column=name,
+                )
         ids = cast(pd.Series, raw.pop(_NODE_ID_COLUMN)).astype("int64")
         with self.metrics.timer("sql_decode", table=schema.name):
             decoded = decode_frame(raw, columns)

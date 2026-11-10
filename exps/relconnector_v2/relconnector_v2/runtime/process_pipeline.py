@@ -23,6 +23,16 @@ from relconnector_v2.task import SeedBatch
 from .contracts import RuntimeResult, Sampler, SeedSource, Trainer
 
 
+def _peak_gpu_allocated_bytes(trainer: Trainer) -> int:
+    """Read the training device, which may differ from CUDA's current device."""
+    wrapped = getattr(trainer, "trainer", trainer)
+    raw_device = getattr(wrapped, "device", None)
+    if raw_device is None or not torch.cuda.is_available():
+        return 0
+    device = torch.device(raw_device)
+    return int(torch.cuda.max_memory_allocated(device)) if device.type == "cuda" else 0
+
+
 class ProcessAssemblyWorker(Protocol):
     """CPU-only worker that owns SQL and feature-encoding state."""
 
@@ -54,6 +64,7 @@ class ProcessRuntimeConfig:
     plan_queue_bytes: int = 2 * 1024 * 1024 * 1024
     ready_queue_bytes: int = 16 * 1024 * 1024 * 1024
     window_batches: int = 4
+    cold_window_batches: int | None = None
     window_bytes: int = 512 * 1024 * 1024
     max_inflight_windows: int = 8
     initial_active_processes: int = 1
@@ -90,6 +101,8 @@ class ProcessRuntimeConfig:
             raise ValueError(
                 "initial_active_processes cannot exceed assembly_processes"
             )
+        if self.cold_window_batches is not None and self.cold_window_batches <= 0:
+            raise ValueError("cold_window_batches must be positive")
         if self.training_order not in {"strict", "ready"}:
             raise ValueError("training_order must be strict or ready")
         if self.progress_interval_s < 0:
@@ -139,6 +152,7 @@ class _ReadyBatch:
 class _SamplingFinished:
     total_batches: int
     epoch_batches: dict[int, int]
+    epoch_sample_s: dict[int, float]
 
 
 @dataclass(frozen=True)
@@ -508,6 +522,7 @@ class ProcessPipelineExecutor:
         epoch_trained: dict[int, int] = defaultdict(int)
         epoch_examples: dict[int, int] = defaultdict(int)
         epoch_weighted_loss: dict[int, float] = defaultdict(float)
+        epoch_train_s: dict[int, float] = defaultdict(float)
         epoch_started: dict[int, float] = {}
         epoch_finished: dict[int, float] = {}
         window_remaining: dict[int, int] = {}
@@ -648,6 +663,7 @@ class ProcessPipelineExecutor:
                 ready_by_epoch.pop(candidate.batch.key.epoch, None)
             epoch = candidate.batch.key.epoch
             epoch_started.setdefault(epoch, time.perf_counter())
+            train_started = time.perf_counter()
             try:
                 with TORCH_RNG_LOCK:
                     train_result = trainer.train_step(candidate.batch)
@@ -660,6 +676,7 @@ class ProcessPipelineExecutor:
                     f"sequence={candidate.sequence}, completed_steps={steps}"
                 ) from error
             now = time.perf_counter()
+            epoch_train_s[epoch] += now - train_started
             last_training = now
             epoch_finished[epoch] = now
             steps += 1
@@ -748,6 +765,7 @@ class ProcessPipelineExecutor:
                     "wall_duration_s": wall_duration,
                     "first_batch_wait_s": max(begin - wall_begin, 0.0),
                     "ready_wait_s": epoch_ready_wait_s[epoch],
+                    "train_s": epoch_train_s[epoch],
                     "batches_per_second": count / duration if duration else 0.0,
                 }
             )
@@ -768,8 +786,12 @@ class ProcessPipelineExecutor:
                 "ready_queue": ready_queue.snapshot(),
                 "workers": worker_reports,
                 "epochs": records,
+                "peak_gpu_allocated_bytes": (
+                    _peak_gpu_allocated_bytes(trainer)
+                ),
             },
         )
+
 
     @staticmethod
     def _drain_control(
@@ -789,6 +811,7 @@ class ProcessPipelineExecutor:
                         "stage": "sampling",
                         "total_batches": message.total_batches,
                         "epoch_batches": message.epoch_batches,
+                        "epoch_sample_s": message.epoch_sample_s,
                     }
                 )
             elif isinstance(message, _EpochSampled):
@@ -835,6 +858,7 @@ def _sample_process_main(
     config: ProcessRuntimeConfig,
 ) -> None:
     epoch_batches: dict[int, int] = {}
+    epoch_sample_s: dict[int, float] = {}
     pending: list[_SequencedPlan] = []
     pending_bytes = 0
     sequence = 0
@@ -880,10 +904,17 @@ def _sample_process_main(
                 control_queue.put(_EpochSampled(message.epoch, message.batches))
                 continue
             seed = cast(SeedBatch, message)
+            sample_started = time.perf_counter()
             plan = sampler.sample(seed)
+            epoch_sample_s[seed.key.epoch] = epoch_sample_s.get(seed.key.epoch, 0.0) + time.perf_counter() - sample_started
             size = plan.allocated_bytes
+            target_batches = (
+                config.cold_window_batches
+                if seed.key.epoch == 0 and config.cold_window_batches is not None
+                else config.window_batches
+            )
             if pending and (  # noqa: SIM102
-                len(pending) >= config.window_batches
+                len(pending) >= target_batches
                 or pending_bytes + size > config.window_bytes
             ):
                 if not flush():
@@ -893,7 +924,7 @@ def _sample_process_main(
             sequence += 1
         if not flush():
             return
-        control_queue.put(_SamplingFinished(sequence, epoch_batches))
+        control_queue.put(_SamplingFinished(sequence, epoch_batches, epoch_sample_s))
         worker_gate.activate_all()
         for _ in range(config.assembly_processes):
             plan_queue.put(None, 0, stop)

@@ -4,6 +4,8 @@ ref_repos/
 .agent/
 .sumi/
 .forge/
+.v2tmp/
+thesis/
 
 **/__pycache__/
 **/*.pyc

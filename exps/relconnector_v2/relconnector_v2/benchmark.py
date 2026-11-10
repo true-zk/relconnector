@@ -11,6 +11,7 @@ from pathlib import Path
 
 from . import replay
 from .config import OnlineTrainingConfig
+from .feature_read_profiles import tuned_feature_read_profile
 from .process_api import MultiprocessRelBenchModel
 from .training.validation import ValidatedTrainer
 
@@ -25,10 +26,16 @@ def main(argv: list[str] | None = None) -> int:
     ):
         print(f"skip: {args.dataset}/{args.task}", flush=True)
         return 0
+    read_profile = (
+        tuned_feature_read_profile(args.dataset)
+        if args.read_profile == "tuned"
+        else None
+    )
     config = OnlineTrainingConfig(
         batch_size=args.batch_size,
         num_neighbors=tuple(int(value) for value in args.num_neighbors.split(",")),
         channels=args.channels,
+        model_kind=args.model,
         epochs=args.epochs,
         max_batches=args.max_batches,
         seed=args.seed,
@@ -36,13 +43,33 @@ def main(argv: list[str] | None = None) -> int:
         torch_num_threads=args.torch_num_threads,
         feature_cache_bytes=args.feature_cache_mb * 1024 * 1024,
         ready_queue_bytes=args.ready_queue_mb * 1024 * 1024,
-        feature_window_batches=args.window_batches,
+        feature_window_batches=(
+            args.window_batches
+            if args.window_batches is not None
+            else read_profile.window_batches
+            if read_profile is not None
+            else 4
+        ),
+        feature_cold_window_batches=args.cold_window_batches,
+        feature_block_density_threshold=(
+            args.density_threshold
+            if args.density_threshold is not None
+            else read_profile.density_threshold
+            if read_profile is not None
+            else 0.25
+        ),
+        feature_policy="static" if read_profile is not None else "adaptive",
         feature_window_bytes=args.window_mb * 1024 * 1024,
         text_embedding_cache_bytes=args.text_cache_mb * 1024 * 1024,
         text_cache_scope=args.text_cache_scope,
         text_batch_size=args.text_batch_size,
         text_execution=args.text_execution,
         disk_text_cache_mode=args.disk_text_cache_mode,
+        disk_text_cache_layout=args.disk_text_cache_layout,
+        disk_text_block_rows=args.disk_text_block_rows,
+        disk_text_block_max_bytes=args.disk_text_block_max_mb * 1024**2,
+        node_block_warm_index=args.node_block_warm_index,
+        node_block_max_mapped_shards=args.node_block_max_mapped_shards,
         disk_text_cache_min_database_bytes=(
             args.disk_text_cache_min_database_mb * 1024 * 1024
         ),
@@ -138,6 +165,7 @@ def main(argv: list[str] | None = None) -> int:
         "status": "ok",
         "dataset": args.dataset,
         "task": args.task,
+        "read_profile": args.read_profile,
         "duration_s": duration,
         "peak_rss_mb": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024,
         "completed_batches": result.steps,
@@ -200,6 +228,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--batch-size", type=int, default=512)
     parser.add_argument("--num-neighbors", default="128,128")
     parser.add_argument("--channels", type=int, default=128)
+    parser.add_argument("--model", choices=("graphsage", "relgnn"), default="graphsage")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--torch-num-threads", type=int, default=1)
@@ -210,7 +239,10 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--training-order", choices=("strict", "ready"), default="ready"
     )
-    parser.add_argument("--window-batches", type=int, default=4)
+    parser.add_argument("--read-profile", choices=("tuned", "manual"), default="tuned")
+    parser.add_argument("--window-batches", type=int)
+    parser.add_argument("--cold-window-batches", type=int)
+    parser.add_argument("--density-threshold", type=float)
     parser.add_argument("--window-mb", type=int, default=512)
     parser.add_argument("--max-inflight-windows", type=int, default=8)
     parser.add_argument("--feature-cache-mb", type=int, default=4096)
@@ -230,6 +262,15 @@ def _parser() -> argparse.ArgumentParser:
         choices=("off", "on", "adaptive"),
         default="adaptive",
     )
+    parser.add_argument(
+        "--disk-text-cache-layout",
+        choices=("content", "node_block"),
+        default="content",
+    )
+    parser.add_argument("--disk-text-block-rows", type=int, default=256)
+    parser.add_argument("--disk-text-block-max-mb", type=int, default=8192)
+    parser.add_argument("--node-block-warm-index", action="store_true")
+    parser.add_argument("--node-block-max-mapped-shards", type=int, default=64)
     parser.add_argument("--disk-text-cache-min-database-mb", type=int, default=256)
     parser.add_argument("--disk-text-cache-min-model-inputs", type=int, default=4096)
     parser.add_argument(

@@ -90,8 +90,11 @@ class _AssemblyWorker:
         self.worker_index = worker_index
         self.delay_first = delay_first
         self.epochs: set[int] = set()
+        self.windows: dict[int, list[int]] = {}
 
     def assemble_many(self, plans: list[SamplePlan]) -> list[PreparedBatch]:
+        if plans:
+            self.windows.setdefault(plans[0].key.epoch, []).append(len(plans))
         output = []
         for raw_plan in plans:
             if not isinstance(raw_plan, EntitySamplePlan):
@@ -111,6 +114,7 @@ class _AssemblyWorker:
         return {
             "worker": self.worker_index,
             "epochs": sorted(self.epochs),
+            "windows": self.windows,
         }
 
     def close(self) -> None:
@@ -167,6 +171,23 @@ class _Trainer:
 
 
 class ProcessPipelineTest(unittest.TestCase):
+    def test_cold_and_warm_window_sizes_preserve_training_order(self) -> None:
+        trainer = _Trainer()
+        result = ProcessPipelineExecutor(ProcessRuntimeConfig(
+            assembly_processes=1, window_batches=8, cold_window_batches=4,
+            cross_epoch_prefetch=False, training_order="strict",
+        )).run(ProcessRuntimeComponents(
+            seeds=_Seeds(8), sampler=_Sampler(),
+            assembly_factory=_AssemblyFactory(), trainer=trainer,
+        ), epochs=2)
+        self.assertEqual(result.steps, 16)
+        self.assertEqual(trainer.order, [
+            BatchKey(epoch, batch) for epoch in range(2) for batch in range(8)
+        ])
+        worker = next(item for item in result.pipeline["workers"]
+                      if item["stage"] == "assembly")
+        self.assertEqual(worker["diagnostics"]["windows"], {0: [4, 4], 1: [8]})
+
     def test_no_cross_epoch_prefetch_waits_for_training(self) -> None:
         trainer = _Trainer()
         result = ProcessPipelineExecutor(ProcessRuntimeConfig(

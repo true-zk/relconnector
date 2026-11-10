@@ -6,7 +6,7 @@ import threading
 import time
 from collections import OrderedDict
 from collections.abc import Sequence
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, Protocol
@@ -158,7 +158,7 @@ class GloveTextEmbedder:
         if not sentences:
             return torch.empty((0, self.embedding_dim))
         epoch = getattr(self._context, "epoch", None)
-        with self.metrics.timer("text_normalize"):
+        with self._timer("text_normalize"):
             normalized = [normalize_text(value) for value in sentences]
         self.metrics.add("text_occurrences", len(normalized))
         self.metrics.add("text_characters", sum(map(len, normalized)))
@@ -199,7 +199,7 @@ class GloveTextEmbedder:
             return result[torch.tensor(inverse, dtype=torch.long)]
         embeddings: list[torch.Tensor | None] = [None] * len(unique)
         if self._shared_cache is not None:
-            with self.metrics.timer("shared_text_cache_lookup"):
+            with self._timer("shared_text_cache_lookup"):
                 lookup = self._shared_cache.lookup_or_reserve(unique)
             for position, embedding in lookup.hits.items():
                 embeddings[position] = embedding
@@ -232,13 +232,13 @@ class GloveTextEmbedder:
             complete = [embedding for embedding in embeddings if embedding is not None]
             if len(complete) != len(unique):
                 raise RuntimeError("Shared text embedding result is incomplete")
-            with self.metrics.timer("text_expand"):
+            with self._timer("text_expand"):
                 return torch.stack(complete)[torch.tensor(inverse, dtype=torch.long)]
 
         missing: list[str] = []
         missing_positions: list[int] = []
         memory_hits = 0
-        with self.metrics.timer("text_cache_lookup"), self._lock:
+        with self._timer("text_cache_lookup"), self._lock:
             for position, value in enumerate(unique):
                 location = self._cache.get(value)
                 if location is None:
@@ -265,8 +265,17 @@ class GloveTextEmbedder:
         complete = [embedding for embedding in embeddings if embedding is not None]
         if len(complete) != len(unique):
             raise RuntimeError("Text embedding result is incomplete")
-        with self.metrics.timer("text_expand"):
+        with self._timer("text_expand"):
             return torch.stack(complete)[torch.tensor(inverse, dtype=torch.long)]
+
+    def _timer(self, operation: str) -> AbstractContextManager[None]:
+        key = getattr(self._context, "column", "")
+        table, separator, column = key.partition(".")
+        return self.metrics.timer(
+            operation,
+            table=table if separator else "",
+            column=column if separator else "",
+        )
 
     def _find_direct_modules(self) -> tuple[Any, Any] | None:
         try:
@@ -274,9 +283,7 @@ class GloveTextEmbedder:
         except TypeError:
             return None
         pooling_mode = (
-            getattr(modules[1], "pooling_mode", None)
-            if len(modules) == 2
-            else None
+            getattr(modules[1], "pooling_mode", None) if len(modules) == 2 else None
         )
         get_pooling_mode = (
             getattr(modules[1], "get_pooling_mode_str", None)
@@ -288,8 +295,7 @@ class GloveTextEmbedder:
         if (
             len(modules) != 2
             or not (
-                hasattr(modules[0], "tokenize")
-                or hasattr(modules[0], "preprocess")
+                hasattr(modules[0], "tokenize") or hasattr(modules[0], "preprocess")
             )
             or not hasattr(modules[0], "emb_layer")
             or pooling_mode != "mean"
@@ -299,7 +305,7 @@ class GloveTextEmbedder:
 
     def _encode_missing(self, sentences: list[str]) -> torch.Tensor:
         if self._direct_modules is None:
-            with self.metrics.timer("text_model"), torch.inference_mode():
+            with self._timer("text_model"), torch.inference_mode():
                 return self._model.encode(
                     sentences,
                     convert_to_tensor=True,
@@ -319,16 +325,16 @@ class GloveTextEmbedder:
         with torch.inference_mode():
             for offset in range(0, len(ordered), self.direct_batch_size):
                 chunk = ordered[offset : offset + self.direct_batch_size]
-                with self.metrics.timer("text_tokenize"):
+                with self._timer("text_tokenize"):
                     tokenize = getattr(word_embeddings, "tokenize", None)
                     features = (
                         tokenize(chunk)
                         if tokenize is not None
                         else word_embeddings.preprocess(chunk)
                     )
-                with self.metrics.timer("text_lookup"):
+                with self._timer("text_lookup"):
                     features = word_embeddings(features)
-                with self.metrics.timer("text_pool"):
+                with self._timer("text_pool"):
                     features = pooling(features)
                 outputs.append(features["sentence_embedding"].cpu())
         encoded = torch.cat(outputs)
@@ -343,7 +349,7 @@ class GloveTextEmbedder:
         epoch: int | None,
         coordinate_disk: bool = True,
     ) -> torch.Tensor:
-        with self.metrics.timer("disk_text_cache_lookup"):
+        with self._timer("disk_text_cache_lookup"):
             lookup = self._disk_cache.lookup_or_reserve(
                 values,
                 coordinated=coordinate_disk,
@@ -352,7 +358,7 @@ class GloveTextEmbedder:
             encoded, model_time_s = self._encode_and_record(values, epoch=epoch)
             with self._lock:
                 memory_hit_rate = self._hits / max(self._hits + self._misses, 1)
-            with self.metrics.timer("disk_text_cache_observe"):
+            with self._timer("disk_text_cache_observe"):
                 self._disk_cache.observe_encoded(
                     values,
                     encoded,
@@ -386,13 +392,13 @@ class GloveTextEmbedder:
                     else:
                         buffered_values.append(values[position])
                         buffered_embeddings.append(embedding)
-                with self.metrics.timer("disk_text_cache_publish"):
+                with self._timer("disk_text_cache_publish"):
                     self._disk_cache.publish(lookup.reservations, published)
                 self.metrics.add("disk_text_cache_writes", len(published))
                 if buffered_values:
                     with self._lock:
                         memory_hit_rate = self._hits / max(self._hits + self._misses, 1)
-                    with self.metrics.timer("disk_text_cache_buffer"):
+                    with self._timer("disk_text_cache_buffer"):
                         self._disk_cache.observe_encoded(
                             buffered_values,
                             torch.stack(buffered_embeddings),
@@ -403,7 +409,7 @@ class GloveTextEmbedder:
                 self._disk_cache.abort(lookup.reservations)
                 raise
 
-        with self.metrics.timer("disk_text_cache_wait"):
+        with self._timer("disk_text_cache_wait"):
             pending_hits = self._disk_cache.wait(lookup.pending)
         for position, embedding in pending_hits.items():
             embeddings[position] = embedding

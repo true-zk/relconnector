@@ -29,6 +29,7 @@ from baseline.vanilla_baseline.runtime.contracts import (
 
 from . import replay
 from .config import OnlineTrainingConfig
+from .feature_read_profiles import tuned_feature_read_profile
 from .features import PreparedBatch
 from .fixed_vanilla_benchmark import VanillaReplaySampler, VanillaReplaySeeds
 from .process_api import MultiprocessRelBenchModel
@@ -69,6 +70,7 @@ def _identity(args: argparse.Namespace, database: Path) -> dict[str, object]:
 
 
 def _run_v2(args: argparse.Namespace, manifest: dict[str, object]):
+    read_profile = tuned_feature_read_profile(args.dataset)
     config = OnlineTrainingConfig(
         batch_size=args.batch_size,
         num_neighbors=tuple(int(v) for v in args.num_neighbors.split(",")),
@@ -79,6 +81,9 @@ def _run_v2(args: argparse.Namespace, manifest: dict[str, object]):
         device="cpu",
         torch_num_threads=1,
         feature_cache_bytes=0,
+        feature_window_batches=read_profile.window_batches,
+        feature_block_density_threshold=read_profile.density_threshold,
+        feature_policy="static",
         text_embedding_cache_bytes=args.text_cache_mb * 1024**2,
         text_cache_scope="local",
         disk_text_cache_mode=args.disk_text_cache_mode,

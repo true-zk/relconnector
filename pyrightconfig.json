@@ -1,5 +1,12 @@
 {
-  "include": ["exps/baseline", "exps/benchmark", "exps/data", "exps/relconnector", "exps/tests"],
+  "include": [
+    "exps/baseline", 
+    "exps/benchmark", 
+    "exps/data", 
+    "exps/relconnector", 
+    "exps/tests",
+    "src/",
+  ],
   "extraPaths": ["exps/tests"],
   "venvPath": ".",
   "venv": ".venv",

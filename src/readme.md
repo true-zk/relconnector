@@ -1,4 +1,5 @@
-relconnector
+# RelX: An Efficient and Scalable End-to-End Framework for Relational Table Learning
+
 重新整理的版本
 
 relconnector 核心是把关系表格学习拆分成三个独立、可以并行的部分：

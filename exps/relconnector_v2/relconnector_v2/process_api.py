@@ -24,6 +24,7 @@ from .features.disk_text import (
     text_embedding_cache_location,
     text_model_identity,
 )
+from .features.node_block_text import node_block_cache_location
 from .features.text import GloveTextEmbedder
 from .graph import GraphIndex, InMemoryGraphIndexBuilder
 from .observability import OperationMetrics
@@ -141,6 +142,17 @@ class MultiprocessRelBenchModel:
             cache_dir=effective_cache_dir,
         )
         feature_schema = schema_builder.build()
+        node_block_cache_path = None
+        node_block_cache_namespace = ""
+        if (
+            self.config.disk_text_cache_layout == "node_block"
+            and self.config.disk_text_cache_mode != "off"
+        ):
+            node_block_cache_path, node_block_cache_namespace = node_block_cache_location(
+                cache_dir,
+                namespace=disk_text_cache_namespace,
+                schema_fingerprint=feature_schema.fingerprint,
+            )
         graph_builder = (
             InMemoryGraphIndexBuilder(
                 reader,
@@ -181,6 +193,7 @@ class MultiprocessRelBenchModel:
             channels=self.config.channels,
             num_layers=self.config.num_layers,
             aggr=self.config.aggr,
+            model_kind=self.config.model_kind,
             lr=self.config.lr,
             weight_decay=self.config.weight_decay,
             device=self.config.device,
@@ -194,6 +207,9 @@ class MultiprocessRelBenchModel:
             hidden_columns=task.hidden_columns,
             feature_schema=feature_schema,
             feature_block_size=self.config.feature_block_size,
+            feature_block_density_threshold=(
+                self.config.feature_block_density_threshold
+            ),
             feature_cache_bytes=self.config.feature_cache_bytes // workers,
             text_model_path=self.config.text_model_path,
             text_batch_size=self.config.text_batch_size,
@@ -208,10 +224,14 @@ class MultiprocessRelBenchModel:
             disk_text_cache_path=(
                 None
                 if self.config.disk_text_cache_mode == "off"
+                or node_block_cache_path is not None
                 else str(disk_text_cache_path)
             ),
             disk_text_cache_namespace=disk_text_cache_namespace,
-            disk_text_cache_mode=self.config.disk_text_cache_mode,
+            disk_text_cache_mode=(
+                "off" if node_block_cache_path is not None
+                else self.config.disk_text_cache_mode
+            ),
             database_bytes=path.stat().st_size,
             disk_text_cache_min_database_bytes=(
                 self.config.disk_text_cache_min_database_bytes
@@ -240,6 +260,15 @@ class MultiprocessRelBenchModel:
             ),
             cost_disk_bytes=self.config.cost_disk_cache_bytes // workers,
             training_epochs=self.config.epochs,
+            node_block_cache_path=(
+                None if node_block_cache_path is None
+                else str(node_block_cache_path)
+            ),
+            node_block_cache_namespace=node_block_cache_namespace,
+            node_block_cache_rows=self.config.disk_text_block_rows,
+            node_block_cache_max_bytes=self.config.disk_text_block_max_bytes,
+            node_block_warm_index=self.config.node_block_warm_index,
+            node_block_max_mapped_shards=self.config.node_block_max_mapped_shards,
         )
         self.session = MultiprocessTrainingSession(
             graph=graph,
@@ -283,6 +312,7 @@ class MultiprocessRelBenchModel:
                 plan_queue_bytes=self.config.plan_queue_bytes,
                 ready_queue_bytes=self.config.ready_queue_bytes,
                 window_batches=self.config.feature_window_batches,
+                cold_window_batches=self.config.feature_cold_window_batches,
                 window_bytes=self.config.feature_window_bytes,
                 max_inflight_windows=self.config.process_max_inflight_windows,
                 initial_active_processes=self.config.process_initial_active_workers,

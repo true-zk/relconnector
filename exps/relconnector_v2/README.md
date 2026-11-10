@@ -35,6 +35,26 @@ least 4,096 disk requests each, at least 99% hits, and at most 4 MiB/s observed
 WAL growth. Below 95% hits or above 8 MiB/s growth restores the write budget.
 Warm lookups also check for recycling, at most once per second.
 
+An optional node-block layout stores already encoded text vectors by table,
+column, and node ID. Enable it with `--disk-text-cache-layout node_block`;
+the default `content` layout above is unchanged. Within each feature window,
+sampled IDs are deduplicated before a single cache lookup across its batches.
+Reads are grouped by immutable vector shard, and a shard is read sequentially
+when at least 25% of its rows are requested. On an all-hit table, SQL reads only
+non-text columns; a partial miss reads the original columns and encodes only
+missing texts. `--disk-text-block-rows` controls shard size (default 256 vectors)
+and `--disk-text-block-max-mb` limits new writes per dataset (default 8192 MiB).
+The cache stops admitting rows near that limit; concurrent workers can
+temporarily exceed it between budget refreshes. It does not evict old shards.
+`--disk-text-cache-mode off` disables either layout. Selecting `node_block` with
+`on` or `adaptive` enables node-block caching explicitly, without the content
+cache's adaptive admission gate. The node-block files use a distinct namespace
+including the database, text-model identity, and feature-schema fingerprint.
+
+For a five-epoch run, add `--disk-text-cache-layout node_block` and
+`--disk-text-cache-mode on` to the usual benchmark command. Use `content` to
+restore the original content-keyed layout.
+
 The default `--text-cache-scope adaptive` keeps shared embeddings and their
 cross-worker encoding reservations. Each worker measures lookup cost and reuse.
 After a costly, high-hit observation window it builds a bounded local index of
@@ -73,6 +93,13 @@ PYTHONPATH=exps/relconnector_v2 .venv/bin/python -m relconnector_v2.benchmark \
   --assembly-processes 4 \
   --training-order ready
 ```
+
+The benchmark CLI now uses the frozen phase-one SQL read profile for each of
+the ten datasets: its tuned window and block density threshold are recorded
+in `effective_config`. Use `--read-profile manual` with
+`--window-batches` and `--density-threshold` for a separate ablation. The
+profile choices and their CPU-only measurement limits are documented in
+[`chunked-read-tuning-cpu-20261027.md`](../doc/chunked-read-tuning-cpu-20261027.md).
 
 See `PLAN.md` for the staged performance-validation matrix and `STATUS.md` for
 the current implementation state.

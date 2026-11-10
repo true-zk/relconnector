@@ -25,6 +25,7 @@ from .features.disk_text import (
     text_embedding_cache_location,
     text_model_identity,
 )
+from .features.node_block_text import NodeBlockTextCache, node_block_cache_location
 from .features.text import GloveTextEmbedder
 from .graph import GraphIndex, InMemoryGraphIndexBuilder
 from .observability import OperationMetrics
@@ -111,6 +112,23 @@ class OnlineRelBenchModel:
             cache_dir=effective_cache_dir,
         )
         feature_schema = schema_builder.build()
+        node_block_cache = None
+        if (
+            self.config.disk_text_cache_layout == "node_block"
+            and self.config.disk_text_cache_mode != "off"
+        ):
+            block_path, block_namespace = node_block_cache_location(
+                cache_dir,
+                namespace=disk_text_cache_namespace,
+                schema_fingerprint=feature_schema.fingerprint,
+            )
+            node_block_cache = NodeBlockTextCache(
+                block_path,
+                namespace=block_namespace,
+                embedding_dim=GloveTextEmbedder.embedding_dim,
+                rows_per_block=self.config.disk_text_block_rows,
+                max_bytes=self.config.disk_text_block_max_bytes,
+            )
         if effective_cache_dir is None:
             graph_builder = InMemoryGraphIndexBuilder(
                 reader, scan_batch_size=self.config.graph_scan_batch_size
@@ -135,15 +153,6 @@ class OnlineRelBenchModel:
             num_neighbors=list(self.config.num_neighbors),
             base_seed=self.config.seed,
         )
-        fetcher = SqlFeatureFetcher(
-            reader,
-            hidden_columns=task.hidden_columns,
-            feature_columns=feature_schema.feature_columns,
-            block_size=self.config.feature_block_size,
-            cache_bytes=self.config.feature_cache_bytes,
-            database_version=database_version,
-            metrics=metrics,
-        )
         text_embedder = GloveTextEmbedder(
             model_path=self.config.text_model_path,
             cache_bytes=self.config.text_embedding_cache_bytes,
@@ -152,10 +161,14 @@ class OnlineRelBenchModel:
             disk_cache_path=(
                 None
                 if self.config.disk_text_cache_mode == "off"
+                or node_block_cache is not None
                 else str(disk_text_cache_path)
             ),
             disk_cache_namespace=disk_text_cache_namespace,
-            disk_cache_mode=self.config.disk_text_cache_mode,
+            disk_cache_mode=(
+                "off" if node_block_cache is not None
+                else self.config.disk_text_cache_mode
+            ),
             database_bytes=path.stat().st_size,
             disk_cache_min_database_bytes=(
                 self.config.disk_text_cache_min_database_bytes
@@ -167,11 +180,31 @@ class OnlineRelBenchModel:
             disk_cache_min_model_time_s=(self.config.disk_text_cache_min_model_time_s),
             metrics=metrics,
         )
+        fetcher = SqlFeatureFetcher(
+            reader,
+            hidden_columns=task.hidden_columns,
+            feature_columns=feature_schema.feature_columns,
+            block_size=self.config.feature_block_size,
+            block_density_threshold=self.config.feature_block_density_threshold,
+            cache_bytes=self.config.feature_cache_bytes,
+            database_version=database_version,
+            metrics=metrics,
+            node_block_text_cache=node_block_cache,
+            text_columns={
+                table: tuple(
+                    column for column, kind in spec.col_to_stype.items()
+                    if kind.value == "text_embedded"
+                )
+                for table, spec in feature_schema.tables.items()
+            },
+            text_embedder=text_embedder,
+        )
         encoder = TensorFrameEncoder(
             feature_schema,
             text_embedder,
             text_batch_size=self.config.text_batch_size,
             metrics=metrics,
+            preembedded_text=node_block_cache is not None,
         )
         assembler = TensorFrameBatchAssembler(
             encoder,
@@ -185,6 +218,7 @@ class OnlineRelBenchModel:
                 text_embedder,
                 text_batch_size=self.config.text_batch_size,
                 metrics=metrics,
+                preembedded_text=node_block_cache is not None,
             )
             return TensorFrameBatchAssembler(
                 worker_encoder,
@@ -205,6 +239,7 @@ class OnlineRelBenchModel:
             channels=self.config.channels,
             num_layers=self.config.num_layers,
             aggr=self.config.aggr,
+            model_kind=self.config.model_kind,
             lr=self.config.lr,
             weight_decay=self.config.weight_decay,
             device=self.config.device,
@@ -255,6 +290,9 @@ class OnlineRelBenchModel:
             return executor.run(session.components, epochs=self.config.epochs)
         finally:
             session.text_embedder.close()
+            block_cache = getattr(session.components.fetcher, "node_block_text_cache", None)
+            if block_cache is not None:
+                block_cache.close()
 
 
 def _cutoff(reader: BaseDatabaseReader) -> pd.Timestamp | None:

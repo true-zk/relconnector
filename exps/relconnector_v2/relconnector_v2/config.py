@@ -11,6 +11,7 @@ class OnlineTrainingConfig:
     batch_size: int = 512
     num_neighbors: tuple[int, ...] = (128, 128)
     channels: int = 128
+    model_kind: Literal["graphsage", "relgnn"] = "graphsage"
     aggr: str = "sum"
     lr: float = 1e-3
     weight_decay: float = 0.0
@@ -22,12 +23,14 @@ class OnlineTrainingConfig:
     graph_scan_batch_size: int = 1_000_000
     seed_shuffle_block_size: int = 65_536
     feature_block_size: int = 4096
+    feature_block_density_threshold: float = 0.25
     feature_cache_bytes: int = 4 * 1024 * 1024 * 1024
     executor: Literal["sync", "async", "process"] = "process"
     seed_queue_bytes: int = 64 * 1024 * 1024
     plan_queue_bytes: int = 2 * 1024 * 1024 * 1024
     ready_queue_bytes: int = 16 * 1024 * 1024 * 1024
     feature_window_batches: int = 4
+    feature_cold_window_batches: int | None = None
     feature_window_max_batches: int = 32
     feature_window_bytes: int = 512 * 1024 * 1024
     encode_workers: int = 1
@@ -40,6 +43,11 @@ class OnlineTrainingConfig:
     text_cache_admission: Literal["always", "second", "adaptive"] = "adaptive"
     text_execution: Literal["official", "direct"] = "direct"
     disk_text_cache_mode: Literal["off", "on", "adaptive"] = "adaptive"
+    disk_text_cache_layout: Literal["content", "node_block"] = "content"
+    disk_text_block_rows: int = 256
+    disk_text_block_max_bytes: int = 8 * 1024**3
+    node_block_warm_index: bool = False
+    node_block_max_mapped_shards: int = 64
     disk_text_cache_min_database_bytes: int = 256 * 1024 * 1024
     disk_text_cache_min_model_inputs: int = 4096
     disk_text_cache_max_memory_hit_rate: float = 0.10
@@ -65,6 +73,8 @@ class OnlineTrainingConfig:
     replay_dir: str | None = None
 
     def __post_init__(self) -> None:
+        if self.model_kind not in {"graphsage", "relgnn"}:
+            raise ValueError("model_kind must be graphsage or relgnn")
         if self.cache_strategy not in {"legacy", "off", "cost", "roi"}:
             raise ValueError("invalid cache strategy")
         if self.cost_disk_cache_bytes < 0:
@@ -87,6 +97,8 @@ class OnlineTrainingConfig:
             self.fetched_queue_bytes,
             self.text_batch_size,
             self.assembly_processes,
+            self.disk_text_block_rows,
+            self.node_block_max_mapped_shards,
             self.process_max_inflight_windows,
             self.process_initial_active_workers,
         )
@@ -119,6 +131,13 @@ class OnlineTrainingConfig:
             raise ValueError(
                 "feature_window_batches cannot exceed feature_window_max_batches"
             )
+        if self.feature_cold_window_batches is not None and (
+            self.feature_cold_window_batches <= 0
+            or self.feature_cold_window_batches > self.feature_window_max_batches
+        ):
+            raise ValueError("feature_cold_window_batches exceeds window limits")
+        if not 0 < self.feature_block_density_threshold <= 1:
+            raise ValueError("feature_block_density_threshold must be in (0, 1]")
         if self.text_cache_admission not in {"always", "second", "adaptive"}:
             raise ValueError("invalid text cache admission")
         if self.text_cache_scope not in {"adaptive", "shared", "local"}:
@@ -127,6 +146,10 @@ class OnlineTrainingConfig:
             raise ValueError("invalid text execution")
         if self.disk_text_cache_mode not in {"off", "on", "adaptive"}:
             raise ValueError("invalid disk text cache mode")
+        if self.disk_text_cache_layout not in {"content", "node_block"}:
+            raise ValueError("invalid disk text cache layout")
+        if self.disk_text_block_max_bytes < 0:
+            raise ValueError("disk text block cache budget must be nonnegative")
         if self.disk_text_cache_min_model_inputs <= 0:
             raise ValueError("disk text cache minimum inputs must be positive")
         if not 0 <= self.disk_text_cache_max_memory_hit_rate <= 1:

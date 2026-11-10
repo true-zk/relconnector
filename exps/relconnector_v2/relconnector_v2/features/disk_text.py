@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import os
 import shutil
+import sys
 import sqlite3
 import threading
 import time
@@ -21,6 +22,7 @@ import torch
 
 _SCHEMA_VERSION = 2
 _SQLITE_VARIABLE_CHUNK = 500
+_SQLITE_WRITE_TRANSACTION_ROWS = 4096
 _Method = TypeVar("_Method", bound=Callable[..., Any])
 
 
@@ -99,12 +101,14 @@ class SqliteTextEmbeddingCache:
         max_mapped_shards: int = 1024,
         write_shard_entries: int = 8192,
         wal_checkpoint_bytes: int | None = None,
+        block_read_min_fraction: float = 0.0,
     ) -> None:
         if (
             embedding_dim <= 0 or wait_timeout_s <= 0 or reservation_ttl_s <= 0
             or max_mapped_shards <= 0
             or write_shard_entries <= 0
             or (wal_checkpoint_bytes is not None and wal_checkpoint_bytes <= 0)
+            or not 0 <= block_read_min_fraction <= 1
         ):
             raise ValueError("disk text cache limits must be positive")
         self.path = Path(path)
@@ -114,6 +118,9 @@ class SqliteTextEmbeddingCache:
         self.reservation_ttl_s = reservation_ttl_s
         self.max_mapped_shards = max_mapped_shards
         self.write_shard_entries = write_shard_entries
+        self.block_read_min_fraction = block_read_min_fraction
+        self._block_reads = 0
+        self._block_read_bytes = 0
         self.wal_checkpoint_bytes = wal_checkpoint_bytes
         self._wal_target_bytes = wal_checkpoint_bytes or 64 * 1024 * 1024
         self._wal_policy_checked = 0.0
@@ -124,6 +131,8 @@ class SqliteTextEmbeddingCache:
         self._lock = threading.RLock()
         self._connection: sqlite3.Connection | None = None
         self._mapped_shards: OrderedDict[str, np.memmap] = OrderedDict()
+        self._read_index: dict[bytes, tuple[str, int]] | None = None
+        self._read_index_load_s = 0.0
         self._mapping_opens = 0
         self._mapping_evictions = 0
         self._writer: BinaryIO | None = None
@@ -137,6 +146,33 @@ class SqliteTextEmbeddingCache:
         self._misses = 0
         self._writes = 0
         self._waits = 0
+
+    @_locked
+    def prepare_read_index(self) -> None:
+        """Keep the completed cold epoch's key-to-block index in this reader."""
+        if self._read_index is not None:
+            return
+        started = time.perf_counter()
+        self._read_index = {
+            bytes(key): (sys.intern(str(shard)), int(row_index))
+            for key, shard, row_index in self._connect().execute(
+                "SELECT key, shard, row_index FROM embeddings"
+            )
+        }
+        self._read_index_load_s += time.perf_counter() - started
+
+    def _read_many(
+        self, connection: sqlite3.Connection, keys: list[bytes]
+    ) -> dict[bytes, tuple[str, int]]:
+        if self._read_index is None:
+            return self._read_many_sql(connection, keys)
+        found = {key: self._read_index[key] for key in keys if key in self._read_index}
+        missing = [key for key in keys if key not in found]
+        if missing:
+            newly_visible = self._read_many_sql(connection, missing)
+            self._read_index.update(newly_visible)
+            found.update(newly_visible)
+        return found
 
     @staticmethod
     def has_entries(path: str | Path, *, namespace: str) -> bool:
@@ -235,6 +271,15 @@ class SqliteTextEmbeddingCache:
         return DiskTextLookup(hits, {}, {}, uncached)
 
     @_locked
+    def missing_positions(self, values: list[str]) -> list[int]:
+        """Recheck keys before a coordinated write without loading vectors."""
+        if not values:
+            return []
+        keys = [_digest(value) for value in values]
+        present = self._read_many(self._connect(), keys)
+        return [position for position, key in enumerate(keys) if key not in present]
+
+    @_locked
     def publish(
         self,
         reservations: dict[int, bytes],
@@ -275,19 +320,40 @@ class SqliteTextEmbeddingCache:
             return
         rows = self._write_shard([_digest(value) for value in values], embeddings)
         connection = self._connect()
-        before = connection.total_changes
-        connection.execute("BEGIN IMMEDIATE")
-        try:
-            connection.executemany(
-                "INSERT OR IGNORE INTO embeddings"
-                " (key, shard, row_index) VALUES (?, ?, ?)",
-                rows,
-            )
-            connection.commit()
-        except BaseException:
-            connection.rollback()
-            raise
-        self._writes += connection.total_changes - before
+        # A cold node-block window can publish hundreds of thousands of rows.
+        # One transaction holds SQLite's single writer lock long enough for
+        # other assembly processes to exhaust their busy timeout.
+        deadline = time.monotonic() + 600.0
+        for offset in range(0, len(rows), _SQLITE_WRITE_TRANSACTION_ROWS):
+            chunk = rows[offset : offset + _SQLITE_WRITE_TRANSACTION_ROWS]
+            before = connection.total_changes
+            while True:
+                try:
+                    connection.execute("BEGIN IMMEDIATE")
+                    break
+                except sqlite3.OperationalError as exc:
+                    if (
+                        exc.sqlite_errorcode & 0xFF
+                        not in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED)
+                        or time.monotonic() >= deadline
+                    ):
+                        raise
+                    time.sleep(0.05)
+            try:
+                connection.executemany(
+                    "INSERT OR IGNORE INTO embeddings"
+                    " (key, shard, row_index) VALUES (?, ?, ?)",
+                    chunk,
+                )
+                connection.commit()
+            except BaseException:
+                connection.rollback()
+                raise
+            self._writes += connection.total_changes - before
+            # SQLite does not promise a fair writer queue. Yield after each
+            # chunk so waiting assembly processes can acquire the next turn.
+            if offset + _SQLITE_WRITE_TRANSACTION_ROWS < len(rows):
+                time.sleep(0.01)
         self._checkpoint_if_needed(connection)
 
     def wait(self, pending: dict[int, bytes]) -> dict[int, torch.Tensor]:
@@ -353,7 +419,11 @@ class SqliteTextEmbeddingCache:
             "max_mapped_shards": self.max_mapped_shards,
             "mapping_opens": self._mapping_opens,
             "mapping_evictions": self._mapping_evictions,
+            "read_index_entries": 0 if self._read_index is None else len(self._read_index),
+            "read_index_load_s": self._read_index_load_s,
             "write_shard_entries": self.write_shard_entries,
+            "block_reads": self._block_reads,
+            "block_read_bytes": self._block_read_bytes,
             "wal_bytes": self._wal_size(),
             "wal_peak_bytes": self._wal_peak_bytes,
             "wal_checkpoint_bytes": self._wal_target_bytes,
@@ -375,6 +445,7 @@ class SqliteTextEmbeddingCache:
             if mapped_file is not None:
                 mapped_file.close()
         self._mapped_shards.clear()
+        self._read_index = None
         if self._connection is not None:
             self._connection.close()
             self._connection = None
@@ -493,7 +564,7 @@ class SqliteTextEmbeddingCache:
         self._checkpoint_busy += int(result[0] != 0)
 
     @staticmethod
-    def _read_many(
+    def _read_many_sql(
         connection: sqlite3.Connection, keys: list[bytes]
     ) -> dict[bytes, tuple[str, int]]:
         found: dict[bytes, tuple[str, int]] = {}
@@ -551,9 +622,19 @@ class SqliteTextEmbeddingCache:
             if np.any(row_indices < 0) or np.any(row_indices >= row_count):
                 raise ValueError(f"invalid row in text embedding shard {shard}")
             matrix = mapping.reshape(row_count, self.embedding_dim)
-            values = torch.from_numpy(
-                np.array(matrix[row_indices], dtype=np.float32, copy=True)
-            )
+            if (
+                self.block_read_min_fraction > 0
+                and len(row_indices) >= row_count * self.block_read_min_fraction
+            ):
+                # One sequential read serves every requested row in this shard.
+                block = np.array(matrix, dtype=np.float32, copy=True)
+                values = torch.from_numpy(block[row_indices].copy())
+                self._block_reads += 1
+                self._block_read_bytes += int(block.nbytes)
+            else:
+                values = torch.from_numpy(
+                    np.array(matrix[row_indices], dtype=np.float32, copy=True)
+                )
             for (key, _), value in zip(rows, values, strict=True):
                 output[key] = value
         return output
@@ -601,6 +682,19 @@ class SqliteTextEmbeddingCache:
                 if item.is_file()
             )
         return total
+
+    def projected_shard_bytes(self, new_rows: int) -> int:
+        """Estimate new allocated shard bytes before appending a batch."""
+        if new_rows <= 0:
+            return 0
+        free_rows = (
+            self.write_shard_entries - self._writer_rows
+            if self._writer is not None
+            else 0
+        )
+        remaining = max(new_rows - free_rows, 0)
+        shards = (remaining + self.write_shard_entries - 1) // self.write_shard_entries
+        return shards * self.write_shard_entries * self.embedding_dim * 4
 
 
 class AdaptiveDiskTextEmbeddingCache:

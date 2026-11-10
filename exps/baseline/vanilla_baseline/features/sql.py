@@ -62,14 +62,14 @@ class SqlFeatureFetcher:
         database_version: str = "local",
         block_density_threshold: float = 0.25,
         max_ids_per_query: int = 10_000,
-        read_policy: Literal["hybrid", "row"] = "hybrid",
+        read_policy: Literal["hybrid", "row", "exact"] = "hybrid",
     ) -> None:
         if block_size <= 0 or max_ids_per_query <= 0:
             raise ValueError("batch sizes must be greater than zero")
         if not 0 < block_density_threshold <= 1:
             raise ValueError("block_density_threshold must be in (0, 1]")
-        if read_policy not in {"hybrid", "row"}:
-            raise ValueError("read_policy must be hybrid or row")
+        if read_policy not in {"hybrid", "row", "exact"}:
+            raise ValueError("read_policy must be hybrid, row or exact")
         self.reader = reader
         self.block_size = block_size
         self.database_version = database_version
@@ -136,6 +136,15 @@ class SqlFeatureFetcher:
             return pd.DataFrame(
                 {column.name: pd.Series(dtype="object") for column in columns}
             ), 0
+
+        if self.read_policy == "exact":
+            # Strict serial baseline: one precise IN query for this sampled
+            # table, with no block selection or application-level cache.
+            available = self._read_ids(schema, columns, sorted(set(ids)))
+            missing = sorted(set(ids).difference(available.index))
+            if missing:
+                raise KeyError(f"Missing node IDs in {table_name!r}: {missing[:10]}")
+            return available.reindex(ids).reset_index(drop=True), len(available)
 
         ids_by_block: dict[int, list[int]] = defaultdict(list)
         for node_id in set(ids):

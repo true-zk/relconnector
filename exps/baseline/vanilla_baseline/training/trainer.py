@@ -26,6 +26,7 @@ class OnlineTrainer:
         channels: int = 128,
         num_layers: int = 2,
         aggr: str = "sum",
+        model_kind: str = "graphsage",
         lr: float = 1e-3,
         weight_decay: float = 0.0,
         device: str | torch.device | None = None,
@@ -45,6 +46,7 @@ class OnlineTrainer:
                 channels=channels,
                 num_layers=num_layers,
                 aggr=aggr,
+                model_kind=model_kind,
             ).to(self.device)
         else:
             self.model = OnlineEntityModel(
@@ -56,6 +58,7 @@ class OnlineTrainer:
                 channels=channels,
                 num_layers=num_layers,
                 aggr=aggr,
+                model_kind=model_kind,
             ).to(self.device)
         self.optimizer = torch.optim.Adam(
             self.model.parameters(),

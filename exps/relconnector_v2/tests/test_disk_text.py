@@ -56,7 +56,109 @@ def _concurrent_disk_writer(path: str, worker: int, barrier, reports) -> None:
     cache.close()
 
 
+def _large_node_block_writer(path: str, worker: int, barrier, reports) -> None:
+    cache = SqliteTextEmbeddingCache(
+        path, namespace="large-concurrent", embedding_dim=2,
+        write_shard_entries=256,
+    )
+    try:
+        cache._connect()
+        barrier.wait(timeout=30)
+        keys = [f"worker-{worker}-node-{index}" for index in range(12_289)]
+        vectors = torch.full((len(keys), 2), float(worker))
+        cache.put_many(keys, vectors)
+        reports.put((worker, cache.snapshot()["writes"]))
+    finally:
+        cache.close()
+
+
 class SqliteTextEmbeddingCacheTest(unittest.TestCase):
+    def test_warm_index_reads_existing_and_newly_published_vectors(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "text.sqlite"
+            reader = SqliteTextEmbeddingCache(
+                path, namespace="warm-index", embedding_dim=2,
+                write_shard_entries=2, max_mapped_shards=8,
+            )
+            writer = SqliteTextEmbeddingCache(
+                path, namespace="warm-index", embedding_dim=2,
+                write_shard_entries=2,
+            )
+            try:
+                writer.put_many(["a", "b"], torch.tensor([[1., 2.], [3., 4.]]))
+                reader.prepare_read_index()
+                self.assertEqual(reader.snapshot()["read_index_entries"], 2)
+                self.assertTrue(torch.equal(reader.lookup(["b"]).hits[0], torch.tensor([3., 4.])))
+                writer.put_many(["c"], torch.tensor([[5., 6.]]))
+                lookup = reader.lookup(["a", "c", "missing"])
+                self.assertEqual(lookup.uncached, [2])
+                self.assertTrue(torch.equal(lookup.hits[0], torch.tensor([1., 2.])))
+                self.assertTrue(torch.equal(lookup.hits[1], torch.tensor([5., 6.])))
+                self.assertEqual(reader.snapshot()["read_index_entries"], 3)
+            finally:
+                reader.close()
+                writer.close()
+
+    def test_large_put_many_uses_bounded_write_transactions(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            cache = SqliteTextEmbeddingCache(
+                Path(directory) / "text.sqlite", namespace="chunked",
+                embedding_dim=2, write_shard_entries=256,
+            )
+            try:
+                connection = cache._connect()
+                transactions: list[str] = []
+                connection.set_trace_callback(
+                    lambda statement: transactions.append(statement)
+                    if statement == "BEGIN IMMEDIATE" else None
+                )
+                keys = [f"node-{index}" for index in range(8_193)]
+                cache.put_many(keys, torch.ones((len(keys), 2)))
+                self.assertEqual(len(transactions), 3)
+                self.assertEqual(cache.snapshot()["entries"], len(keys))
+            finally:
+                cache.close()
+
+    def test_four_large_concurrent_node_block_writers(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = str(Path(directory) / "text.sqlite")
+            context = get_context("spawn")
+            barrier, reports = context.Barrier(4), context.Queue()
+            workers = [
+                context.Process(
+                    target=_large_node_block_writer,
+                    args=(path, worker, barrier, reports),
+                )
+                for worker in range(4)
+            ]
+            try:
+                for worker in workers:
+                    worker.start()
+                results = [reports.get(timeout=90) for _ in workers]
+                for worker in workers:
+                    worker.join(timeout=10)
+                    self.assertEqual(worker.exitcode, 0)
+                self.assertEqual(sum(count for _, count in results), 4 * 12_289)
+                reader = SqliteTextEmbeddingCache(
+                    path, namespace="large-concurrent", embedding_dim=2,
+                )
+                try:
+                    self.assertEqual(reader.snapshot()["entries"], 4 * 12_289)
+                    for worker in range(4):
+                        key = f"worker-{worker}-node-12288"
+                        self.assertTrue(torch.equal(
+                            reader.lookup([key]).hits[0],
+                            torch.full((2,), float(worker)),
+                        ))
+                finally:
+                    reader.close()
+            finally:
+                for worker in workers:
+                    if worker.is_alive():
+                        worker.terminate()
+                    worker.join(timeout=10)
+                reports.close()
+
     def test_checkpoint_budget_grows_with_index_and_respects_free_space(self) -> None:
         mib = 1024 * 1024
         self.assertEqual(_wal_checkpoint_target(1 * mib, 100_000 * mib), 64 * mib)

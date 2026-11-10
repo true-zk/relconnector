@@ -11,6 +11,7 @@ class OnlineTrainingConfig:
     batch_size: int = 512
     num_neighbors: tuple[int, ...] = (128, 128)
     channels: int = 128
+    model_kind: Literal["graphsage", "relgnn"] = "graphsage"
     aggr: str = "sum"
     lr: float = 1e-3
     weight_decay: float = 0.0
@@ -23,7 +24,7 @@ class OnlineTrainingConfig:
     seed_shuffle_block_size: int = 65_536
     feature_block_size: int = 4096
     feature_cache_bytes: int = 4 * 1024 * 1024 * 1024
-    feature_read_policy: Literal["hybrid", "row"] = "hybrid"
+    feature_read_policy: Literal["hybrid", "row", "exact"] = "hybrid"
     executor: Literal["sync", "async"] = "async"
     seed_queue_bytes: int = 64 * 1024 * 1024
     plan_queue_bytes: int = 2 * 1024 * 1024 * 1024
@@ -36,6 +37,8 @@ class OnlineTrainingConfig:
     cache_dir: str | None = None
 
     def __post_init__(self) -> None:
+        if self.model_kind not in {"graphsage", "relgnn"}:
+            raise ValueError("model_kind must be graphsage or relgnn")
         positive = (
             self.batch_size,
             self.channels,
@@ -57,8 +60,8 @@ class OnlineTrainingConfig:
             raise ValueError("max_batches must be positive")
         if self.feature_cache_bytes < 0:
             raise ValueError("feature_cache_bytes must be nonnegative")
-        if self.feature_read_policy not in {"hybrid", "row"}:
-            raise ValueError("feature_read_policy must be hybrid or row")
+        if self.feature_read_policy not in {"hybrid", "row", "exact"}:
+            raise ValueError("feature_read_policy must be hybrid, row or exact")
         if self.out_channels is not None and self.out_channels <= 0:
             raise ValueError("out_channels must be positive")
         if self.executor not in {"sync", "async"}:

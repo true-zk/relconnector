@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, replace
+import resource
+import time
 from typing import Any, Literal
 
 from relconnector_v2.connector import create_reader
@@ -11,6 +13,7 @@ from relconnector_v2.sampling import SamplePlan
 
 from .assembler import TensorFrameBatchAssembler
 from .contracts import PreparedBatch
+from .node_block_text import NodeBlockTextCache
 from .schema import TensorFrameEncoder, TensorFrameFeatureSchema
 from .shared_encoded import SharedEncodedFeatureCache, create_shared_encoded_cache
 from .shared_text import SharedTextEmbeddingCache
@@ -47,6 +50,7 @@ class SqlAssemblyWorkerFactory:
     shared_encoded_cache_bytes: int
     encoded_cache_admission: Literal["always", "second", "adaptive"]
     operation_telemetry: bool
+    feature_block_density_threshold: float = 0.25
     adaptive_text_index: bool = False
     shared_text_cache: SharedTextEmbeddingCache | None = None
     shared_encoded_cache: SharedEncodedFeatureCache | None = None
@@ -54,6 +58,12 @@ class SqlAssemblyWorkerFactory:
     cost_disk_policy: Literal["budget", "roi"] = "budget"
     cost_disk_bytes: int = 0
     training_epochs: int = 1
+    node_block_cache_path: str | None = None
+    node_block_cache_namespace: str = ""
+    node_block_cache_rows: int = 256
+    node_block_cache_max_bytes: int = 8 * 1024**3
+    node_block_warm_index: bool = False
+    node_block_max_mapped_shards: int = 64
 
     def __call__(self, worker_index: int) -> SqlAssemblyWorker:
         return SqlAssemblyWorker(self, worker_index)
@@ -99,16 +109,10 @@ class SqlAssemblyWorker:
         self.config = config
         self.worker_index = worker_index
         self.metrics = OperationMetrics(config.operation_telemetry)
+        self.epoch_stage: dict[int, dict[str, float]] = {}
+        self.epoch_operations: dict[int, dict[str, float]] = {}
+        self.epoch_block_reads: dict[int, dict[str, int]] = {}
         reader = create_reader(config.reader_kind, config.database_path)
-        self.fetcher = SqlFeatureFetcher(
-            reader,
-            hidden_columns=config.hidden_columns,
-            feature_columns=config.feature_schema.feature_columns,
-            block_size=config.feature_block_size,
-            cache_bytes=config.feature_cache_bytes,
-            database_version=config.database_version,
-            metrics=self.metrics,
-        )
         self.text_embedder = GloveTextEmbedder(
             model_path=config.text_model_path,
             cache_bytes=config.text_cache_bytes,
@@ -129,11 +133,43 @@ class SqlAssemblyWorker:
             cost_disk_bytes=config.cost_disk_bytes,
             training_epochs=config.training_epochs,
         )
+        self.node_block_cache = (
+            None
+            if config.node_block_cache_path is None
+            else NodeBlockTextCache(
+                config.node_block_cache_path,
+                namespace=config.node_block_cache_namespace,
+                embedding_dim=GloveTextEmbedder.embedding_dim,
+                rows_per_block=config.node_block_cache_rows,
+                max_bytes=config.node_block_cache_max_bytes,
+                max_mapped_shards=config.node_block_max_mapped_shards,
+            )
+        )
+        self.fetcher = SqlFeatureFetcher(
+            reader,
+            hidden_columns=config.hidden_columns,
+            feature_columns=config.feature_schema.feature_columns,
+            block_size=config.feature_block_size,
+            block_density_threshold=config.feature_block_density_threshold,
+            cache_bytes=config.feature_cache_bytes,
+            database_version=config.database_version,
+            metrics=self.metrics,
+            node_block_text_cache=self.node_block_cache,
+            text_columns={
+                table: tuple(
+                    column for column, kind in spec.col_to_stype.items()
+                    if kind.value == "text_embedded"
+                )
+                for table, spec in config.feature_schema.tables.items()
+            },
+            text_embedder=self.text_embedder,
+        )
         encoder = TensorFrameEncoder(
             config.feature_schema,
             self.text_embedder,
             text_batch_size=config.text_batch_size,
             metrics=self.metrics,
+            preembedded_text=self.node_block_cache is not None,
         )
         self.assembler = TensorFrameBatchAssembler(
             encoder,
@@ -150,9 +186,36 @@ class SqlAssemblyWorker:
             stop = start + 1
             while stop < len(plans) and plans[stop].key.epoch == epoch:
                 stop += 1
-            prepared.extend(
-                self.assembler.assemble_many(self.fetcher.fetch_many(plans[start:stop]))
-            )
+            before = self.metrics.report()
+            block_before = self.node_block_cache.snapshot() if self.node_block_cache is not None else None
+            begun = time.perf_counter()
+            if epoch > 0 and self.config.node_block_warm_index and self.node_block_cache is not None:
+                self.node_block_cache.prepare_read_index()
+            fetched = self.fetcher.fetch_many(plans[start:stop])
+            read_s = time.perf_counter() - begun
+            begun = time.perf_counter()
+            prepared.extend(self.assembler.assemble_many(fetched))
+            process_s = time.perf_counter() - begun
+            operations = self.epoch_operations.setdefault(epoch, {})
+            after = self.metrics.report()
+            processing_in_fetch_s = 0.0
+            for kind, name_key, value_key in (("timers", "operation", "total_s"), ("counters", "counter", "value")):
+                old = {(item[name_key], item["table"], item["column"]): float(item[value_key]) for item in before[kind]}
+                for item in after[kind]:
+                    key = (item[name_key], item["table"], item["column"])
+                    label = f"{kind}:{key[0]}"
+                    delta = float(item[value_key]) - old.get(key, 0.0)
+                    operations[label] = operations.get(label, 0.0) + delta
+                    if kind == "timers" and key[0] in {"block_text_encode", "block_text_cache_write"}:
+                        processing_in_fetch_s += delta
+            stages = self.epoch_stage.setdefault(epoch, {"feature_read_s": 0.0, "feature_process_s": 0.0})
+            stages["feature_read_s"] += read_s - processing_in_fetch_s
+            stages["feature_process_s"] += process_s + processing_in_fetch_s
+            if block_before is not None:
+                block_after = self.node_block_cache.snapshot()
+                reads = self.epoch_block_reads.setdefault(epoch, {"block_reads": 0, "block_read_bytes": 0})
+                for key in reads:
+                    reads[key] += int(block_after[key]) - int(block_before[key])
             start = stop
         return prepared
 
@@ -178,6 +241,7 @@ class SqlAssemblyWorker:
         )
         return {
             "worker": self.worker_index,
+            "peak_rss_mb": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024,
             "feature_block_cache": {
                 "hits": raw.hits,
                 "misses": raw.misses,
@@ -197,9 +261,19 @@ class SqlAssemblyWorker:
                     else self.config.shared_text_cache.snapshot()
                 ),
                 "disk": self.text_embedder.disk_cache_stats,
+                "node_block": (
+                    None if self.node_block_cache is None
+                    else self.node_block_cache.snapshot()
+                ),
             },
             "operations": self.metrics.report(),
+            "epoch_stage": self.epoch_stage,
+            "epoch_operations": self.epoch_operations,
+            "epoch_block_reads": self.epoch_block_reads,
+            "feature_epoch_stats": {epoch: asdict(stats) for epoch, stats in self.fetcher.epoch_stats.items()},
         }
 
     def close(self) -> None:
         self.text_embedder.close()
+        if self.node_block_cache is not None:
+            self.node_block_cache.close()

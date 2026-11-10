@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from time import perf_counter
 from typing import cast
 
 import pandas as pd
@@ -44,6 +45,7 @@ class OnlineTrainingSession:
     components: RuntimeComponents
     metrics: OperationMetrics
     initialization_cache: dict[str, bool]
+    prepare_timings: dict[str, float]
 
 
 class OnlineRelBenchModel:
@@ -72,6 +74,7 @@ class OnlineRelBenchModel:
     def prepare(self) -> OnlineTrainingSession:
         if self.session is not None:
             return self.session
+        prepare_started = perf_counter()
         torch.set_num_threads(self.config.torch_num_threads)
         torch.manual_seed(self.config.seed)
         path = self.sqlite_dir / f"{self.dataset}.sqlite"
@@ -94,7 +97,9 @@ class OnlineRelBenchModel:
             require_stypes=True,
             cache_dir=effective_cache_dir,
         )
+        schema_started = perf_counter()
         feature_schema = schema_builder.build()
+        schema_finished = perf_counter()
         if effective_cache_dir is None:
             graph_builder = InMemoryGraphIndexBuilder(
                 reader,
@@ -106,7 +111,9 @@ class OnlineRelBenchModel:
                 scan_batch_size=self.config.graph_scan_batch_size,
                 cache_dir=effective_cache_dir,
             )
+        graph_started = perf_counter()
         graph = graph_builder.build(cutoff=cutoff)
+        graph_finished = perf_counter()
         metrics = OperationMetrics(self.config.operation_telemetry)
         seeds = SqlSeedReader(
             reader,
@@ -154,11 +161,13 @@ class OnlineRelBenchModel:
             channels=self.config.channels,
             num_layers=self.config.num_layers,
             aggr=self.config.aggr,
+            model_kind=self.config.model_kind,
             lr=self.config.lr,
             weight_decay=self.config.weight_decay,
             device=self.config.device,
             seed=self.config.seed,
         )
+        prepare_finished = perf_counter()
         self.session = OnlineTrainingSession(
             graph=graph,
             task=task,
@@ -174,6 +183,14 @@ class OnlineRelBenchModel:
             initialization_cache={
                 "schema": schema_builder.cache_hit,
                 "topology": bool(getattr(graph_builder, "cache_hit", False)),
+            },
+            prepare_timings={
+                "schema_s": schema_finished - schema_started,
+                "graph_build_s": graph_finished - graph_started,
+                "other_s": (schema_started - prepare_started)
+                + (graph_started - schema_finished)
+                + (prepare_finished - graph_finished),
+                "total_s": prepare_finished - prepare_started,
             },
         )
         return self.session
