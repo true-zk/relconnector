@@ -1,14 +1,14 @@
-"""Task definitions independent of database storage metadata."""
+"""Typed learning-task and sample-split definitions."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
 
+from relx.core import TableRef
 
-class TaskType(Enum):
-    """Supported relational table learning tasks."""
 
+class TaskType(str, Enum):
     REGRESSION = "regression"
     BINARY_CLASSIFICATION = "binary_classification"
     MULTICLASS_CLASSIFICATION = "multiclass_classification"
@@ -17,19 +17,43 @@ class TaskType(Enum):
 
 
 @dataclass(frozen=True)
-class TaskSpec:
-    """Specification of a relational table learning task."""
+class ColumnSplit:
+    column: str
+    train: str | int
+    validation: str | int
+    test: str | int
 
+
+@dataclass(frozen=True)
+class SqlQuerySplit:
+    test: str
+    train: str | None = None
+    validation: str | None = None
+    validation_fraction: float = 0.2
+    seed: int = 42
+
+
+@dataclass(frozen=True)
+class DefaultSplit:
+    validation_fraction: float = 0.2
+    seed: int = 42
+
+
+SplitSpec = ColumnSplit | SqlQuerySplit | DefaultSplit
+
+
+@dataclass(frozen=True)
+class TaskSpec:
     name: str
-    table_name: str
+    table: TableRef
     task_type: TaskType
-    entity_table: str
     entity_column: str
-    target_column: str | None
-    time_column: str | None
-    dst_entity_table: str | None
-    dst_entity_column: str | None
-    hidden_columns: tuple[tuple[str, str], ...]
+    label_column: str
+    time_column: str | None = None
+    split: SplitSpec = DefaultSplit()
+    destination_table: TableRef | None = None
+    destination_key: str | None = None
+    entity_table: TableRef | None = None
 
     @property
     def is_recommendation(self) -> bool:

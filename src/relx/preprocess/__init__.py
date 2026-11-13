@@ -1,5 +1,6 @@
 """Dataset inspection and preparation before training."""
 
-from .schema import discover_sqlite_schema
+from .schema import discover_schema
+from .schema_overrides import SchemaOverrides
 
-__all__ = ["discover_sqlite_schema"]
+__all__ = ["SchemaOverrides", "discover_schema"]

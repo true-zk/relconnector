@@ -12,10 +12,13 @@ dependencies = [
     "numpy>=1.26",
     "pandas>=2.0",
     "PyYAML>=6",
+    "SQLAlchemy>=2.0,<2.1",
+    "typing-extensions>=4.0",
 ]
 
 [project.optional-dependencies]
 connectorx = ["connectorx>=0.4.5", "pyarrow>=14"]
+mysql = ["PyMySQL>=1.1,<2"]
 relbench = ["relbench>=3.0"]
 training = ["relbench[full]>=3.0,<4", "sentence-transformers>=5"]
 dev = ["pyright>=1.1.400", "ruff>=0.16"]

@@ -1,15 +1,20 @@
-"""Task specifications and seed batch contracts."""
+"""Task specifications, validation, and seed batch contracts."""
 
-from .config import load_task
 from .seeds import BatchKey, EntitySeedBatch, RecommendationSeedBatch, SeedBatch
-from .spec import TaskSpec, TaskType
+from .spec import ColumnSplit, DefaultSplit, SqlQuerySplit, TaskSpec, TaskType
+from .validation import TaskDataReport, ValidatedTask, validate_task
 
 __all__ = [
     "BatchKey",
+    "ColumnSplit",
+    "DefaultSplit",
     "EntitySeedBatch",
     "RecommendationSeedBatch",
     "SeedBatch",
+    "SqlQuerySplit",
+    "TaskDataReport",
     "TaskSpec",
     "TaskType",
-    "load_task",
+    "ValidatedTask",
+    "validate_task",
 ]

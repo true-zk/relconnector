@@ -1,36 +1,43 @@
-"""Pandas reader for materialized SQLite databases."""
+"""Pandas query reader backed by SQLAlchemy connections."""
 
 from __future__ import annotations
 
-import sqlite3
 from collections.abc import Iterator
-from contextlib import closing
-from pathlib import Path
 
 import pandas as pd
+from sqlalchemy import text
 
-from .base import BaseDatabaseReader
+from .base import BaseDatabaseReader, QueryParams, SqlQuery
 
 
 class PandasDatabaseReader(BaseDatabaseReader):
-    """Execute SQLite queries without loading all rows during iteration."""
+    """Read any database supported by an installed SQLAlchemy dialect."""
 
-    def __init__(self, location: str | Path) -> None:
-        super().__init__(location)
-        if not self.path.is_file():
-            raise FileNotFoundError(self.path)
+    def read_query(
+        self, query: SqlQuery, *, params: QueryParams = None
+    ) -> pd.DataFrame:
+        statement = text(query) if isinstance(query, str) else query
+        with self.engine.connect() as connection:
+            return pd.read_sql_query(
+                statement,
+                connection,
+                params=params,
+                dtype_backend="numpy_nullable",
+            )
 
-    def read_query(self, query: str) -> pd.DataFrame:
-        with closing(sqlite3.connect(self.path)) as connection:
-            return pd.read_sql_query(query, connection, dtype_backend="numpy_nullable")
-
-    def iter_query(self, query: str, *, batch_size: int) -> Iterator[pd.DataFrame]:
+    def iter_query(
+        self, query: SqlQuery, *, batch_size: int, params: QueryParams = None
+    ) -> Iterator[pd.DataFrame]:
         if batch_size <= 0:
             raise ValueError("batch_size must be greater than zero")
-        with closing(sqlite3.connect(self.path)) as connection:
+        statement = text(query) if isinstance(query, str) else query
+        with self.engine.connect().execution_options(
+            yield_per=batch_size
+        ) as connection:
             yield from pd.read_sql_query(
-                query,
+                statement,
                 connection,
+                params=params,
                 chunksize=batch_size,
                 dtype_backend="numpy_nullable",
             )
