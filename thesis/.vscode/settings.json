@@ -1,0 +1,29 @@
+{
+  "latex-workshop.latex.recipes": [
+    {
+      "name": "latexmk (xelatex)",
+      "tools": ["latexmk-xelatex"]
+    }
+  ],
+  "latex-workshop.latex.tools": [
+    {
+      "name": "latexmk-xelatex",
+      "command": "/home/zk/.local/texlive/2026/bin/x86_64-linux/latexmk",
+      "args": [
+        "-xelatex",
+        "-synctex=1",
+        "-interaction=nonstopmode",
+        "-file-line-error",
+        "-halt-on-error",
+        "%DOC%"
+      ],
+      "env": {
+        "PATH": "/home/zk/.local/texlive/2026/bin/x86_64-linux:/home/zk/.local/bin:/usr/local/bin:/usr/bin:/bin"
+      }
+    }
+  ],
+  "latex-workshop.latex.recipe.default": "first",
+  "latex-workshop.latex.autoBuild.run": "onSave",
+  "latex-workshop.linting.chktex.exec.path": "/home/zk/.local/texlive/2026/bin/x86_64-linux/chktex",
+  "latex-workshop.view.pdf.viewer": "tab"
+}

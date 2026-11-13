@@ -7,7 +7,7 @@
     "exps/tests",
     "src/",
   ],
-  "extraPaths": ["exps/tests"],
+  "extraPaths": ["src", "exps/tests"],
   "venvPath": ".",
   "venv": ".venv",
   "pythonVersion": "3.12",

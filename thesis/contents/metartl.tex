@@ -1,0 +1,45 @@
+% !TEX root = ../main.tex
+
+\chapter{基于元路径的关系表格学习方法 MetaRTL}
+\label{chap:metartl}
+
+\section{研究问题与总体思路}
+
+关系表格预测同时依赖单表字段和跨表关联。令关系数据库中的每一行对应异构图
+$\mathcal G=(\mathcal V,\mathcal E,\mathcal T_v,\mathcal T_e)$ 的一个节点，表类型对应
+节点类型，主外键关系对应边类型。给定目标类型 $\tau_t$ 的节点、训练标签和任务划分，
+本章研究如何在有限的可训练消息传递深度下，识别并融合对预测有用的跨表路径信息。
+单纯扩大异构图神经网络的层数，需要更大范围的邻域采样和更多次参数化聚合；将所有
+邻居直接混合，也难以保留连接路径所表达的不同语义。另一方面，关系表格的节点特征
+并非预先固定的向量，仍需由数值、类别和文本等字段生成。
+
+为同时处理这两个问题，MetaRTL 将初始表示学习与高阶关系聚合分为两个阶段。
+第一阶段使用按表类型配置的表格编码器和两层异构图神经网络，进行有限轮次的任务
+训练；第二阶段固定第一阶段得到的节点初始表示，沿元路径执行无参数传播，再由
+MetaAttn 对路径特征和共享的节点原型信息进行融合。图~\ref{fig:metartl-overview}
+展示了这一流程。这里的“无参数”仅指元路径传播本身不引入可训练变换；表格编码器、
+类型映射、注意力和预测头仍包含参数。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{figures/metartl/fig1.pdf}
+  \caption{MetaRTL 的两阶段总体结构}
+  \label{fig:metartl-overview}
+\end{figure}
+
+\input{contents/metartl_method}
+\input{contents/metartl_experiments}
+
+\section{本章小结}
+
+本章介绍了 MetaRTL 的两阶段设计。有限轮次的表格编码器与浅层异构图网络提供
+初始表示；元路径传播将连接模式显式转化为候选特征；MetaAttn 再融合路径语义与
+共享原型信息。在十个数据库、二十四项任务的实验中，MetaRTL 在三个
+SJTUTables 任务上均取得最高准确率，在二十一项 RelBench 任务中取得十七项
+单独最优和一项并列最优。消融实验表明，初始表示学习与元路径特征
+对 \texttt{rel-f1} 数据集上的三项预测任务均有积极作用。元路径矩阵的
+存储规模受路径数量及矩阵稀疏度影响，是方法应用于更大规模数据库时
+需要考虑的因素。
+
+MetaRTL 回答的是跨表信息怎样形成有效表示。后续章节讨论 RelX 怎样向训练过程
+供给所需数据，两项工作的实验结果分别报告。

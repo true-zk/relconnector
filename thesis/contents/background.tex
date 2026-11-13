@@ -1,0 +1,118 @@
+% !TEX root = ../main.tex
+
+\chapter{关系表格学习基础与关键技术}
+\label{chap:background}
+
+\section{关系数据库的图表示与预测任务}
+
+关系数据库由多张具有不同字段模式的表构成，表间通过主键和外键引用建立联系。
+设数据库 $\mathcal D=\{T_\tau\mid \tau\in\mathcal T_v\}$，
+其中 $T_\tau$ 表示一种表或实体类型，$\mathcal T_v$ 是类型集合。
+将 $T_\tau$ 中的每一行映射为一个 $\tau$ 类型的节点；
+若两行满足主外键对应关系，则在其节点之间建立相应类型的边。
+由此得到异构图
+\begin{equation}
+  \mathcal G=(\mathcal V,\mathcal E,\mathcal T_v,\mathcal T_e),
+  \label{eq:background-graph}
+\end{equation}
+其中 $\mathcal V$、$\mathcal E$ 分别为节点和边集合，
+$\mathcal T_e$ 为关系类型集合。这一转换保留跨表连接结构，
+使模型能够沿关联获取辅助表的信息\cite{fey2024rdl}。
+同一对表也可能存在多种外键语义，因此仅凭节点类型不能完整描述边的含义。
+
+关系表格学习的任务通常由目标表、目标行、预测标签及数据划分定义。
+在带预测时刻的任务中，一个样本还包含时刻 $t$；
+模型输入应依据该时刻允许观察的记录与关系构造，
+不能将未来发生的交互或由未来标签生成的字段当作特征。
+RelBench 将真实关系数据库整理为分类和回归任务，
+并提供相应的任务协议\cite{robinson2024relbench}。
+本论文的 MetaRTL 部分研究这些输入怎样形成有效表示，
+RelX 部分研究训练时怎样按需提供对应数据。
+
+\section{异构表格字段与节点初始表示}
+
+不同表的字段组成和语义并不相同。数值字段需要处理量纲与缺失值，
+类别字段需要建立离散表示，文本字段则需要转换为向量；
+同一行内还可能同时包含几种字段类型。表格编码器为每个节点生成
+固定维度的初始表示。设 $D_\tau[v]$ 为 $\tau$ 类型节点 $v$ 的原始行，
+则可写为
+\begin{equation}
+  x_v=f_\tau(D_\tau[v])\in\mathbb R^d,
+  \label{eq:background-table-encoder}
+\end{equation}
+其中 $f_\tau$ 可以包含字段类型编码与行内交互模块。
+PyTorch Frame 等工作提供了多类型字段的模块化处理方式
+\cite{hu2024pytorchframe}。在具体方法中，还需区分
+随模型参数更新的表格编码器与已预先计算、训练时保持固定的特征；
+这种区别决定了特征是否能够跨轮次复用。
+
+获得初始表示后，图神经网络利用关联边交换信息。
+对节点 $v$ 的关系类型 $r$ 邻域 $\mathcal N_r(v)$，
+一层异构消息传递可概括为
+\begin{equation}
+  h_v^{(\ell+1)}
+  =\operatorname{Upd}^{(\ell)}
+   \left(h_v^{(\ell)},
+   \left\{
+      \operatorname{Agg}^{(\ell)}_r
+      \bigl(\{h_u^{(\ell)}:u\in\mathcal N_r(v)\}\bigr)
+      \right\}_{r\in\mathcal T_e}
+   \right).
+  \label{eq:background-message}
+\end{equation}
+其中聚合方式可按边类型变化。GraphSAGE 通过采样邻居支持
+小批次训练\cite{hamilton2017graphsage}。
+多层传播扩大了可见关系范围，但也增加采样、消息计算和
+特征访问量；因此模型深度需要结合任务与训练成本选择。
+
+\section{元路径与异构图语义}
+
+元路径是关系模式层面的类型序列。
+例如从论文出发，经作者到机构，和经作者回到另一篇论文，
+构成不同的跨表关系。若
+$\mathcal P:\tau_0\rightarrow\tau_1\rightarrow\cdots\rightarrow\tau_\ell$，
+则一条实例路径必须依次经过这些节点和边类型。
+元路径既可定义复合邻接关系，也可用于组织不同语义的候选特征
+\cite{dong2017metapath2vec}。
+
+为表示沿路径的特征传播，令
+$A_{\tau_j\leftarrow\tau_{j-1}}$ 为从前一类型到后一类型的
+归一化关系矩阵。依次相乘即可得到路径传播矩阵：
+\begin{equation}
+  A^{\mathcal P}
+  =A_{\tau_\ell\leftarrow\tau_{\ell-1}}
+   \cdots A_{\tau_1\leftarrow\tau_0}.
+  \label{eq:background-path-product}
+\end{equation}
+矩阵乘法的顺序与信息从源类型流向目标类型的方向一致。
+HAN 使用注意力区分元路径语义\cite{wang2019han}，
+SeHGNN 探索预先聚合异构邻域特征以减少训练期的重复传播
+\cite{yang2023sehgnn}。两者说明路径选择与传播计算可以
+分别设计。MetaRTL 在此基础上增加了从原始关系表格字段学习
+初始表示的阶段，并将路径传播与后续可训练融合分开。
+
+\section{时序邻域采样与训练语义}
+
+当完整图难以作为单个批次训练时，可以围绕目标节点抽取
+有限跳的子图。采样器确定每种边类型和每一跳所访问的邻居，
+模型再从采样结果取出对应表格行及字段特征。
+对带时间信息的预测任务，若边或记录有发生时间，
+采样与字段读取还必须服从目标样本的可见时刻；
+具体可见性规则以数据集任务定义为准。
+这种约束不能仅凭训练、验证和测试标签的划分自动满足。
+
+MetaRTL 第一阶段使用采样子图训练浅层异构图网络；
+第二阶段使用路径传播矩阵和批次索引构造路径特征。
+因此，元路径矩阵的构造范围、时间过滤规则与批次源节点
+集合都会影响实际输入。RelX 则把采样结果视为数据需求，
+研究如何在保持这些语义约束的前提下准备训练批次。
+
+\section{训练数据路径与性能度量}
+\thesisplaceholder{在撰写 RelX 部分时补充数据库行读取、异构字段转换、批次组装、设备传输和模型训练的数据路径，以及端到端耗时、等待时间、吞吐与整作业内存的统一口径。}
+
+\section{本章小结}
+
+本章给出了关系数据库到异构图的映射、异构字段编码、
+消息传递、元路径和时序采样的基本概念。
+这些概念为第~\ref{chap:metartl} 章的 MetaRTL 方法建立了符号基础；
+训练数据路径与系统度量将在 RelX 部分进一步展开。

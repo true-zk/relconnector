@@ -1,5 +1,6 @@
 pandas==3.0.5
 numpy>=1.26
+PyYAML>=6
 
 # GPU runtime (CUDA 12.8, NVIDIA driver 580+):
 #   uv pip install --python .venv/bin/python 'torch==2.7.1' \

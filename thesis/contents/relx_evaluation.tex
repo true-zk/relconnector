@@ -1,0 +1,28 @@
+% !TEX root = ../main.tex
+
+\chapter{RelX 的实验评估与分析}
+\label{chap:relx-evaluation}
+
+\section{实验环境与对照设置}
+\thesisplaceholder{记录数据库、任务、模型、机器、软件版本、批大小、轮数、种子和缓存预算；区分冷启动与热启动，并固定公平对照条件。}
+
+\section{输入正确性与训练质量}
+\thesisplaceholder{比较基线与 RelX 的采样计划、输入张量、时间约束、损失及预测指标，说明一致性检查的方法和误差容忍范围。}
+
+\section{端到端耗时与训练吞吐}
+\thesisplaceholder{报告初始化、在线训练、启动和排空的墙钟时间，以及实际完成批次的吞吐；分析模型等待数据的时间。}
+
+\section{整作业内存与存储开销}
+\thesisplaceholder{使用进程树 PSS 或隔离环境中的内存峰值，分别报告拓扑、组装进程、队列和缓存开销；补充磁盘占用。}
+
+\section{数据规模扩展实验}
+\thesisplaceholder{在可比的模型与训练配置下改变数据库规模，报告端到端耗时、训练吞吐、内存峰值与存储开销随规模变化的趋势，并分析主要瓶颈。}
+
+\section{组件消融与参数敏感性}
+\thesisplaceholder{在相同预算下考察组装进程数、请求去重、各层缓存、跨批复用窗口和在途队列；记录命中率及实际生效情况。}
+
+\section{不同工作负载下的表现与局限}
+\thesisplaceholder{按长文本、宽数值表、重复实体比例等负载特征解释加速或退化；区分历史观测、短程受控实验与最终配对结果。}
+
+\section{本章小结}
+\thesisplaceholder{基于最终实验数据总结 RelX 的输入正确性、训练效率、内存开销及规模扩展表现。}

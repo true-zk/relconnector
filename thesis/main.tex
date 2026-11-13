@@ -1,0 +1,36 @@
+% !TeX encoding = UTF-8
+% !TeX program = xelatex
+
+\documentclass[type=master]{sjtuthesis}
+\input{setup}
+
+\begin{document}
+
+\maketitle
+\copyrightpage
+
+\frontmatter
+\input{contents/abstract}
+\tableofcontents
+% 待补充术语表、插图索引和表格索引时，再启用对应命令。
+
+\mainmatter
+\input{contents/intro}
+\input{contents/background}
+\input{contents/metartl}
+\input{contents/relx_design}
+\input{contents/relx_evaluation}
+\input{contents/conclusion}
+
+\printbibliography[heading=bibintoc]
+
+% 待补充实验配置或推导细节时，可在此加入附录。
+% \appendix
+% \input{contents/appendix}
+
+\backmatter
+\input{contents/acknowledgements}
+\input{contents/achievements}
+\input{contents/resume}
+
+\end{document}

@@ -1417,6 +1417,7 @@ dependencies = [
     { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }, marker = "python_full_version < '3.11'" },
     { name = "pandas", version = "3.0.6", source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "pyyaml" },
 ]
 
 [package.optional-dependencies]
@@ -1443,6 +1444,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.0" },
     { name = "pyarrow", marker = "extra == 'connectorx'", specifier = ">=14" },
     { name = "pyright", marker = "extra == 'dev'", specifier = ">=1.1.400" },
+    { name = "pyyaml", specifier = ">=6" },
     { name = "relbench", marker = "extra == 'relbench'", specifier = ">=3.0" },
     { name = "relbench", extras = ["full"], marker = "extra == 'training'", specifier = ">=3.0,<4" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.16" },
