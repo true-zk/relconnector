@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 from urllib.parse import quote
 
 import pandas as pd
@@ -13,6 +13,9 @@ from sqlalchemy.engine import URL
 from sqlalchemy.sql.elements import TextClause
 
 from .base import BaseDatabaseReader, QueryParams, SqlQuery
+
+if TYPE_CHECKING:
+    import pyarrow as pa
 
 _SOURCE_SCHEMES = {
     "postgresql": "postgresql",
@@ -82,6 +85,13 @@ class ConnectorXDatabaseReader(BaseDatabaseReader):
     def iter_query(
         self, query: SqlQuery, *, batch_size: int, params: QueryParams = None
     ) -> Iterator[pd.DataFrame]:
+        for batch in self.iter_arrow_query(query, batch_size=batch_size, params=params):
+            yield batch.to_pandas(types_mapper=pd.ArrowDtype)
+
+    def iter_arrow_query(
+        self, query: SqlQuery, *, batch_size: int, params: QueryParams = None
+    ) -> Iterator[pa.RecordBatch]:
+        """Pass ConnectorX record batches through without a Pandas conversion."""
         self._ensure_open()
         if batch_size <= 0:
             raise ValueError("batch_size must be greater than zero")
@@ -90,9 +100,8 @@ class ConnectorXDatabaseReader(BaseDatabaseReader):
             import pyarrow as pa
         except ImportError as exc:
             raise RuntimeError(
-                "ConnectorX streaming requires connectorx and pyarrow"
+                "ConnectorX Arrow reading requires connectorx and pyarrow"
             ) from exc
-
         stream = cast(
             pa.RecordBatchReader,
             cx.read_sql(
@@ -105,6 +114,6 @@ class ConnectorXDatabaseReader(BaseDatabaseReader):
         try:
             for batch in stream:
                 if batch.num_rows:
-                    yield batch.to_pandas(types_mapper=pd.ArrowDtype)
+                    yield batch
         finally:
             stream.close()

@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterator, Mapping
 from pathlib import Path
-from typing import Any, TypeAlias
+from typing import TYPE_CHECKING, Any, TypeAlias
 
 import pandas as pd
 from sqlalchemy import create_engine
@@ -13,6 +13,9 @@ from sqlalchemy.engine import URL, Engine, make_url
 from sqlalchemy.sql.elements import TextClause
 from sqlalchemy.sql.selectable import SelectBase
 from typing_extensions import Self
+
+if TYPE_CHECKING:
+    import pyarrow as pa
 
 SqlQuery: TypeAlias = str | TextClause | SelectBase
 # DB drivers accept additional scalar types such as UUID and Decimal.
@@ -73,6 +76,17 @@ class BaseDatabaseReader(ABC):
         self, query: SqlQuery, *, batch_size: int, params: QueryParams = None
     ) -> Iterator[pd.DataFrame]:
         """Stream a query result in bounded DataFrame chunks."""
+
+    def iter_arrow_query(
+        self, query: SqlQuery, *, batch_size: int, params: QueryParams = None
+    ) -> Iterator[pa.RecordBatch]:
+        """Stream typed column batches; readers may override the Pandas fallback."""
+        try:
+            import pyarrow as pa
+        except ImportError as exc:
+            raise RuntimeError("Arrow reading requires pyarrow") from exc
+        for frame in self.iter_query(query, batch_size=batch_size, params=params):
+            yield pa.RecordBatch.from_pandas(frame, preserve_index=False)
 
     def close(self) -> None:
         if not self._closed:

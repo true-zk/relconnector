@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, TypeAlias
+from typing import TypeAlias
 
-if TYPE_CHECKING:
-    import torch
+import numpy as np
 
 
 @dataclass(frozen=True, order=True)
@@ -19,9 +18,10 @@ class BatchKey:
 class EntitySeedBatch:
     key: BatchKey
     node_type: str
-    node_ids: torch.Tensor
-    seed_time: torch.Tensor | None
-    target: torch.Tensor
+    node_ids: np.ndarray
+    seed_time_us: np.ndarray | None
+    target: np.ndarray
+    sample_keys: tuple[tuple[object, ...], ...]
 
 
 @dataclass(frozen=True)
@@ -29,9 +29,10 @@ class RecommendationSeedBatch:
     key: BatchKey
     src_node_type: str
     dst_node_type: str
-    src_node_ids: torch.Tensor
-    positive_dst_ids: torch.Tensor
-    seed_time: torch.Tensor | None
+    src_node_ids: np.ndarray
+    positive_dst_ids: np.ndarray
+    seed_time_us: np.ndarray | None
+    sample_keys: tuple[tuple[object, ...], ...]
 
 
 SeedBatch: TypeAlias = EntitySeedBatch | RecommendationSeedBatch

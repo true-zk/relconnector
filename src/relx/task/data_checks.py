@@ -168,7 +168,7 @@ def _check_labels(
             kind is TaskType.BINARY_CLASSIFICATION and len(distinct) != 2
         ):
             raise ValueError(f"Train labels are incompatible with {kind.value}")
-        if unknown_validation:
+        if unknown_validation and kind is TaskType.BINARY_CLASSIFICATION:
             raise ValueError("Validation contains classes absent from train")
     elif kind in (TaskType.MULTILABEL_CLASSIFICATION, TaskType.RECOMMENDATION):
         destinations: set[object] = set()

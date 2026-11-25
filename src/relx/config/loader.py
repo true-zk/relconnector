@@ -8,6 +8,7 @@ from typing import Any
 import yaml
 
 from .common import fields, mapping
+from .graph import parse_graph
 from .runtime import (
     parse_database,
     parse_features,
@@ -31,6 +32,7 @@ def load_config(path: str | Path) -> RunConfig:
             "database",
             "task",
             "schema",
+            "graph",
             "hidden_columns",
             "features",
             "model",
@@ -45,6 +47,7 @@ def load_config(path: str | Path) -> RunConfig:
         database=database,
         task=task,
         schema=parse_schema(data.get("schema", {}), database.schema_name),
+        graph=parse_graph(data.get("graph", {}), database.schema_name),
         hidden_columns=parse_hidden_columns(
             data.get("hidden_columns", []), database.schema_name
         ),

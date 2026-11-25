@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from relx.conn.factory import ReaderKind
 from relx.core import TableRef
@@ -31,6 +31,19 @@ class FeatureColumnConfig:
 @dataclass(frozen=True)
 class FeaturesConfig:
     columns: tuple[FeatureColumnConfig, ...] = ()
+    sample_limit: int = 1_000
+    sample_seed: int | None = None
+
+
+@dataclass(frozen=True)
+class GraphConfig:
+    """Table selection and the availability time of graph rows."""
+
+    exclude_tables: tuple[TableRef, ...] = ()
+    time_columns: tuple[tuple[TableRef, str], ...] = ()
+    static_tables: tuple[TableRef, ...] = ()
+    timezone: str = "UTC"
+    time_boundary: Literal["strict_before", "at_or_before"] = "at_or_before"
 
 
 @dataclass(frozen=True)
@@ -43,8 +56,14 @@ class ModelConfig:
 class TrainingConfig:
     batch_size: int = 1024
     epochs: int = 20
+    max_batches: int | None = None
     lr: float = 0.001
     seed: int = 42
+    feature_workers: int = 2
+    feature_native_workers: int = 1
+    prefetch_batches: int = 4
+    prefetch_bytes: int = 256 * 1024 * 1024
+    feature_cache_bytes: int = 64 * 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -57,6 +76,7 @@ class RunConfig:
     database: DatabaseConfig
     task: TaskSpec
     schema: SchemaOverrides
+    graph: GraphConfig
     hidden_columns: tuple[tuple[TableRef, str], ...]
     features: FeaturesConfig
     model: ModelConfig

@@ -18,6 +18,8 @@ dependencies = [
 
 [project.optional-dependencies]
 connectorx = ["connectorx>=0.4.5", "pyarrow>=14"]
+native = ["pybind11>=3", "pyarrow>=14"]
+features = ["pytorch-frame>=0.3,<0.4"]
 mysql = ["PyMySQL>=1.1,<2"]
 relbench = ["relbench>=3.0"]
 training = ["relbench[full]>=3.0,<4", "sentence-transformers>=5"]

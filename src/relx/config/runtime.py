@@ -56,7 +56,7 @@ def parse_database(value: object, config_dir: Path) -> DatabaseConfig:
 
 def parse_features(value: object, default_schema: str | None) -> FeaturesConfig:
     data = mapping(value, "features")
-    fields(data, {"columns"}, "features")
+    fields(data, {"columns", "sample_limit", "sample_seed"}, "features")
     raw = data.get("columns", [])
     if not isinstance(raw, list):
         raise TypeError("features.columns must be a list")
@@ -82,7 +82,17 @@ def parse_features(value: object, default_schema: str | None) -> FeaturesConfig:
                 params=mapping(item.get("params", {}), f"{path}.params"),
             )
         )
-    return FeaturesConfig(tuple(parsed))
+    return FeaturesConfig(
+        columns=tuple(parsed),
+        sample_limit=positive_int(
+            data.get("sample_limit", 1_000), "features.sample_limit"
+        ),
+        sample_seed=(
+            nonnegative_int(data["sample_seed"], "features.sample_seed")
+            if "sample_seed" in data
+            else None
+        ),
+    )
 
 
 def parse_model(value: object) -> ModelConfig:
@@ -96,7 +106,15 @@ def parse_model(value: object) -> ModelConfig:
 
 def parse_training(value: object) -> TrainingConfig:
     data = mapping(value, "training")
-    fields(data, {"batch_size", "epochs", "lr", "seed"}, "training")
+    fields(
+        data,
+        {
+            "batch_size", "epochs", "max_batches", "lr", "seed", "feature_workers",
+            "feature_native_workers", "prefetch_batches", "prefetch_bytes",
+            "feature_cache_bytes",
+        },
+        "training",
+    )
     lr = data.get("lr", 0.001)
     if (
         isinstance(lr, bool)
@@ -108,8 +126,29 @@ def parse_training(value: object) -> TrainingConfig:
     return TrainingConfig(
         batch_size=positive_int(data.get("batch_size", 1024), "training.batch_size"),
         epochs=positive_int(data.get("epochs", 20), "training.epochs"),
+        max_batches=(
+            positive_int(data["max_batches"], "training.max_batches")
+            if data.get("max_batches") is not None else None
+        ),
         lr=float(lr),
         seed=nonnegative_int(data.get("seed", 42), "training.seed"),
+        feature_workers=positive_int(
+            data.get("feature_workers", 2), "training.feature_workers"
+        ),
+        feature_native_workers=positive_int(
+            data.get("feature_native_workers", 1), "training.feature_native_workers"
+        ),
+        prefetch_batches=positive_int(
+            data.get("prefetch_batches", 4), "training.prefetch_batches"
+        ),
+        prefetch_bytes=positive_int(
+            data.get("prefetch_bytes", 256 * 1024 * 1024),
+            "training.prefetch_bytes",
+        ),
+        feature_cache_bytes=nonnegative_int(
+            data.get("feature_cache_bytes", 64 * 1024 * 1024),
+            "training.feature_cache_bytes",
+        ),
     )
 
 

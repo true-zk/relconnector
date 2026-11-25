@@ -13,7 +13,7 @@ import yaml
 from relx.config import load_config
 from relx.conn import connect
 from relx.core import TableRef
-from relx.preprocess import discover_schema
+from relx.preprocess import discover_schema, select_graph_tables
 from relx.task import ColumnSplit, DefaultSplit, SqlQuerySplit, TaskType, validate_task
 
 
@@ -130,15 +130,17 @@ class TaskConfigTest(unittest.TestCase):
         self.assertEqual(validated.entity_table, TableRef("users"))
         self.assertEqual(validated.entity_key, ("id",))
         self.assertEqual(validated.sample_key, ("id",))
+        report = validated.data_report
+        assert report is not None
         self.assertEqual(
             (
-                validated.data_report.train_rows,
-                validated.data_report.validation_rows,
-                validated.data_report.test_rows,
+                report.train_rows,
+                report.validation_rows,
+                report.test_rows,
             ),
             (2, 2, 2),
         )
-        self.assertFalse(validated.data_report.test_labels_available)
+        self.assertFalse(report.test_labels_available)
 
     def test_default_split_uses_unlabeled_test_and_latest_validation(self) -> None:
         self.write_config()
@@ -147,9 +149,67 @@ class TaskConfigTest(unittest.TestCase):
         self.config_file.write_text(yaml.safe_dump(config))
         self.assertIsInstance(load_config(self.config_file).task.split, DefaultSplit)
         validated = self.validated()
-        self.assertEqual(validated.split_by_key[(4,)], "validation")
-        self.assertEqual(validated.split_by_key[(5,)], "test")
-        self.assertEqual(validated.data_report.train_rows, 3)
+        split_by_key = validated.split_by_key
+        report = validated.data_report
+        assert split_by_key is not None
+        assert report is not None
+        self.assertEqual(split_by_key[(4,)], "validation")
+        self.assertEqual(split_by_key[(5,)], "test")
+        self.assertEqual(report.train_rows, 3)
+
+    def test_graph_excludes_other_label_tables_and_current_task_table(self) -> None:
+        self.write_config(graph={"exclude_tables": ["no_fk_labels", "recommend_labels"]})
+        config = load_config(self.config_file)
+        with connect(config.database.location) as reader:
+            schema = discover_schema(reader)
+            task = validate_task(config.task, schema)
+        selected = select_graph_tables(schema, task, config.graph)
+        self.assertIn(TableRef("users"), selected)
+        self.assertNotIn(TableRef("labels"), selected)
+        self.assertNotIn(TableRef("no_fk_labels"), selected)
+        self.assertNotIn(TableRef("recommend_labels"), selected)
+
+    def test_graph_exclusions_reject_unknown_and_entity_tables(self) -> None:
+        self.write_config(graph={"exclude_tables": ["missing"]})
+        config = load_config(self.config_file)
+        with connect(config.database.location) as reader:
+            schema = discover_schema(reader)
+            task = validate_task(config.task, schema)
+        with self.assertRaisesRegex(ValueError, "unknown tables"):
+            select_graph_tables(schema, task, config.graph)
+
+        self.write_config(graph={"exclude_tables": ["users"]})
+        config = load_config(self.config_file)
+        with self.assertRaisesRegex(ValueError, "cannot remove task entity"):
+            select_graph_tables(schema, task, config.graph)
+
+    def test_graph_time_config_parses_and_rejects_conflicts(self) -> None:
+        self.write_config(graph={"static_tables": ["users"]})
+        self.assertEqual(load_config(self.config_file).graph.time_boundary, "at_or_before")
+
+        self.write_config(graph={
+            "exclude_tables": ["recommend_labels"],
+            "time_columns": {"no_fk_labels": "prediction_at"},
+            "static_tables": ["users"],
+            "timezone": "Asia/Shanghai",
+            "time_boundary": "at_or_before",
+        })
+        graph = load_config(self.config_file).graph
+        self.assertEqual(graph.time_columns, ((TableRef("no_fk_labels"), "prediction_at"),))
+        self.assertEqual(graph.static_tables, (TableRef("users"),))
+        self.assertEqual(graph.timezone, "Asia/Shanghai")
+        self.assertEqual(graph.time_boundary, "at_or_before")
+
+        self.write_config(graph={
+            "time_columns": {"users": "created_at"},
+            "static_tables": ["users"],
+        })
+        with self.assertRaisesRegex(ValueError, "overlap"):
+            load_config(self.config_file)
+
+        self.write_config(graph={"timezone": "Invalid/Timezone"})
+        with self.assertRaisesRegex(ValueError, "Unknown graph.timezone"):
+            load_config(self.config_file)
 
     def test_sql_query_can_select_only_test_rows(self) -> None:
         self.write_config()
@@ -161,8 +221,10 @@ class TaskConfigTest(unittest.TestCase):
         self.config_file.write_text(yaml.safe_dump(config))
         self.assertIsInstance(load_config(self.config_file).task.split, SqlQuerySplit)
         validated = self.validated()
-        self.assertEqual(validated.data_report.test_rows, 2)
-        self.assertEqual(validated.data_report.validation_rows, 1)
+        report = validated.data_report
+        assert report is not None
+        self.assertEqual(report.test_rows, 2)
+        self.assertEqual(report.validation_rows, 1)
 
     def test_sql_query_rejects_overlap(self) -> None:
         self.write_config()
@@ -186,7 +248,9 @@ class TaskConfigTest(unittest.TestCase):
         first = self.validated()
         second = self.validated()
         self.assertEqual(first.split_by_key, second.split_by_key)
-        self.assertEqual(first.data_report.test_rows, 2)
+        report = first.data_report
+        assert report is not None
+        self.assertEqual(report.test_rows, 2)
 
     def test_ambiguous_foreign_key_requires_entity_table(self) -> None:
         self.write_config()

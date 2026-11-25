@@ -12,6 +12,7 @@ ref_repos/
 **/.ruff_cache/
 *.egg-info/
 build/
+src/relx/_relx_native*.so
 
 exps/data/relbench/*
 !exps/data/relbench/.gitkeep
